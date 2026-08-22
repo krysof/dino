@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="data:,">
+  <title>Dino C++ / WebAssembly</title>
+  <style>
+    :root { --bg:#090d0b; --panel:#111914; --ink:#eaf5e7; --muted:#a9b8a6; --acid:#b9f227; --red:#ff6b5f; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--ink); background:radial-gradient(circle at 50% 0,#26341e 0,#0c120e 38rem,var(--bg) 70rem); font:16px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+    main { width:min(1120px,100%); margin:auto; padding:clamp(16px,3vw,32px); }
+    h1 { margin:.2rem 0; font-size:clamp(1.7rem,5vw,3.5rem); letter-spacing:-.06em; text-transform:uppercase; }
+    h1 span { color:var(--acid); }
+    .lead { color:var(--muted); margin:.2rem 0 1.3rem; }
+    .panel { background:color-mix(in srgb,var(--panel) 92%,transparent); border:1px solid #34422f; box-shadow:0 18px 70px #0009; padding:clamp(12px,2vw,22px); }
+    .loader { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; margin-bottom:14px; }
+    input[type=file] { width:100%; color:var(--muted); border:1px dashed #63725d; padding:11px; background:#080c09; }
+    button,.button { appearance:none; border:1px solid #6f8b5d; border-radius:3px; padding:10px 16px; background:#192416; color:var(--ink); font:inherit; font-weight:700; cursor:pointer; touch-action:none; user-select:none; }
+    button:hover:not(:disabled),button:focus-visible { border-color:var(--acid); color:var(--acid); }
+    button:disabled { opacity:.42; cursor:not-allowed; }
+    #start { background:var(--acid); color:#10160d; border-color:var(--acid); }
+    #screen { position:relative; aspect-ratio:4/3; width:100%; background:#000; border:2px solid #34422f; overflow:hidden; }
+    canvas { width:100%; height:100%; display:block; image-rendering:pixelated; outline:none; }
+    #status { min-height:2.1rem; margin:.7rem 0 0; color:var(--acid); }
+    #status.error { color:var(--red); }
+    #stats { color:var(--muted); font-size:.85rem; }
+    .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin-top:12px; }
+    label { color:var(--muted); }
+    .controls { display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; margin-top:16px; }
+    .dpad { display:grid; grid-template-columns:repeat(3,58px); grid-template-rows:repeat(3,48px); gap:5px; }
+    .dpad button[data-id="4"] { grid-column:2; }.dpad button[data-id="6"] { grid-column:1;grid-row:2; }.dpad button[data-id="7"] { grid-column:3;grid-row:2; }.dpad button[data-id="5"] { grid-column:2;grid-row:3; }
+    .actions { display:grid; grid-template-columns:repeat(2,minmax(68px,1fr)); gap:9px; }
+    .actions button { min-height:52px; }
+    .actions .attack { border-color:#dfb739; }.actions .jump { border-color:#5ab6ed; }
+    details { margin-top:18px; color:var(--muted); }
+    code { color:var(--acid); }
+    a { color:var(--acid); }
+    footer { margin-top:28px; color:#82907e; font-size:.8rem; }
+    @media (max-width:650px) { .loader { grid-template-columns:1fr; }.controls { gap:10px; }.dpad { grid-template-columns:repeat(3,48px); }.panel { padding:10px; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Dino <span>C++ / WASM</span></h1>
+  <p class="lead">主 CPU 由逆向生成的 C++ 执行；CPS-1 图形、声音和时序由固定版本兼容核心提供。</p>
+  <section class="panel">
+    <div class="loader">
+      <input id="rom" type="file" accept=".zip,application/zip" aria-label="选择自己合法持有的 dino.zip">
+      <button id="start" disabled>启动游戏</button>
+    </div>
+    <div id="screen"><canvas id="canvas" width="768" height="576" tabindex="0" oncontextmenu="event.preventDefault()"></canvas></div>
+    <p id="status" role="status">正在载入 WebAssembly…</p>
+    <div id="stats">ROM 不会上传到服务器；文件仅进入当前标签页的内存。</div>
+    <div class="toolbar">
+      <button id="pause" disabled>暂停</button><button id="reset" disabled>复位</button>
+      <label><input id="mute" type="checkbox"> 静音</label>
+    </div>
+    <div class="controls" aria-label="触摸控制">
+      <div class="dpad">
+        <button data-port="0" data-id="4">▲</button><button data-port="0" data-id="6">◀</button>
+        <button data-port="0" data-id="7">▶</button><button data-port="0" data-id="5">▼</button>
+      </div>
+      <div class="actions">
+        <button data-port="0" data-id="2">投币</button><button data-port="0" data-id="3">开始</button>
+        <button class="attack" data-port="0" data-id="1">攻击</button><button class="jump" data-port="0" data-id="0">跳跃</button>
+      </div>
+    </div>
+    <details>
+      <summary>键盘、手柄与 ROM 说明</summary>
+      <p>1P：方向键、<code>Z</code> 攻击、<code>X</code> 跳跃、右 <code>Shift</code> 投币、<code>Enter</code> 开始。2P：<code>WASD</code>、<code>F/G</code>、<code>R/T</code>。支持标准游戏手柄。</p>
+      <p>本站不包含、上传或保存 ROM。请自行选择合法持有且与 FB Alpha/MAME Dino 世界版集合相符的 <code>dino.zip</code>；不要解压。</p>
+    </details>
+  </section>
+  <footer>
+    非商业逆向与移植演示。游戏名称、程序、图形及声音归各自权利人所有。本站不隶属于 Capcom。
+    执行核心条款见 <a href="fba-license.txt">FB Alpha license</a>；
+    <a href="https://github.com/krysof/dino-cpp-wasm">项目与第三方来源说明</a>。
+  </footer>
+</main>
+<script>
+  const ui = Object.fromEntries(['rom','start','canvas','status','stats','pause','reset','mute'].map(id => [id, document.getElementById(id)]));
+  let wasmReady = false, romReady = false, started = false, paused = false;
+  function setStatus(message, error = false) { ui.status.textContent = message; ui.status.classList.toggle('error', error); }
+  var Module = {
+    canvas: ui.canvas,
+    print: text => console.log(text),
+    printErr: text => console.error(text),
+    onRuntimeInitialized() { wasmReady = true; setStatus('WASM 已就绪；请选择 dino.zip'); refreshStart(); },
+    onDinoStatus: setStatus,
+    onDinoStats(s) { ui.stats.textContent = `帧 ${s.frames.toLocaleString()} · C++ 指令 ${s.cppInstructions.toLocaleString()} · 主 CPU 回退 ${s.fallbacks}`; }
+  };
+  function refreshStart() { ui.start.disabled = !(wasmReady && romReady) || started; }
+  ui.rom.addEventListener('change', async () => {
+    romReady = false; refreshStart();
+    const file = ui.rom.files[0]; if (!file) return;
+    setStatus(`正在读取 ${file.name}…`);
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      try { Module.FS.unlink('/rom/dino.zip'); } catch (_) {}
+      Module.FS.writeFile('/rom/dino.zip', bytes);
+      romReady = true; setStatus(`已在本地内存载入 ${file.name}（${(bytes.length/1048576).toFixed(1)} MiB），点击启动`);
+    } catch (error) { setStatus(`读取失败：${error.message}`, true); }
+    refreshStart();
+  });
+  ui.start.addEventListener('click', () => {
+    const result = Module.ccall('dino_start', 'number', ['string','number'], ['/rom/dino.zip', ui.mute.checked ? 1 : 0]);
+    if (result === 0) { started = true; ui.pause.disabled = false; ui.reset.disabled = false; ui.rom.disabled = true; refreshStart(); ui.canvas.focus(); }
+  });
+  ui.pause.addEventListener('click', () => { paused = !paused; Module.ccall('dino_set_paused', null, ['number'], [paused ? 1 : 0]); ui.pause.textContent = paused ? '继续' : '暂停'; setStatus(paused ? '已暂停' : '运行中'); });
+  ui.reset.addEventListener('click', () => { Module.ccall('dino_reset'); setStatus('已复位'); ui.canvas.focus(); });
+  ui.mute.addEventListener('change', () => { if (started) Module.ccall('dino_set_muted', null, ['number'], [ui.mute.checked ? 1 : 0]); });
+  document.querySelectorAll('[data-port][data-id]').forEach(button => {
+    const send = pressed => { if (started) Module.ccall('dino_set_button', null, ['number','number','number'], [+button.dataset.port,+button.dataset.id,pressed]); };
+    button.addEventListener('pointerdown', event => { event.preventDefault(); button.setPointerCapture(event.pointerId); send(1); });
+    ['pointerup','pointercancel','lostpointercapture'].forEach(name => button.addEventListener(name, event => { event.preventDefault(); send(0); }));
+  });
+  window.addEventListener('keydown', event => { if (started && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(event.key)) event.preventDefault(); }, {passive:false});
+  document.addEventListener('visibilitychange', () => { if (started && document.hidden && !paused) ui.pause.click(); });
+</script>
+<script src="dino.js"></script>
+</body>
+</html>
