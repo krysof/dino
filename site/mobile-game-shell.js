@@ -25,6 +25,10 @@
       stickSizeMax: 168,
       stickSizeRatio: 0.24,
       minimumPressMs: 34,
+      actionChordMs: 160,
+      actionChordReleaseMs: 20,
+      actionChordHoldMs: 52,
+      actionReleaseMargin: 18,
       compatibilityMouseDelayMs: 720
     })
   });
@@ -54,6 +58,8 @@
       this.states = new Map();
       this.pressedAt = new Map();
       this.releaseTimers = new Map();
+      this.chordTimers = new Set();
+      this.chordSequence = 0;
       this.buttons = new Map();
       this.history = [];
     }
@@ -86,7 +92,43 @@
       this.counts.clear();
       this.releaseTimers.forEach(timer => global.clearTimeout(timer));
       this.releaseTimers.clear();
+      this.chordTimers.forEach(timer => global.clearTimeout(timer));
+      this.chordTimers.clear();
       Array.from(this.states.keys()).forEach(key => this.send(key, false));
+    }
+
+    rearmChord(buttons, releaseMs, holdMs) {
+      const source = `chord:${++this.chordSequence}`;
+      const keys = buttons.map(buttonKey);
+      buttons.forEach(button => this.buttons.set(buttonKey(button), button));
+      this.setSource(source, buttons, false);
+
+      // The original game recognizes Attack+Jump from one sampled input edge.
+      // Two touch contacts naturally arrive in separate browser events, so
+      // briefly re-arm the pair and publish both downs in the same task.
+      keys.forEach(key => {
+        const timer = this.releaseTimers.get(key);
+        if (timer !== undefined) global.clearTimeout(timer);
+        this.releaseTimers.delete(key);
+        this.send(key, false);
+      });
+
+      const pressTimer = global.setTimeout(() => {
+        this.chordTimers.delete(pressTimer);
+        const pressedAt = performance.now();
+        keys.forEach(key => {
+          if ((this.counts.get(key) || 0) > 0) {
+            this.pressedAt.set(key, pressedAt);
+            this.send(key, true);
+          }
+        });
+        const releaseTimer = global.setTimeout(() => {
+          this.chordTimers.delete(releaseTimer);
+          this.releaseSource(source, false);
+        }, holdMs);
+        this.chordTimers.add(releaseTimer);
+      }, releaseMs);
+      this.chordTimers.add(pressTimer);
     }
 
     pressKey(key) {
@@ -171,6 +213,8 @@
       this.active = false;
       this.stickPointer = null;
       this.actionPointers = new Map();
+      this.lastActionDown = new Map();
+      this.actionChordActive = false;
       this.lastTouchAt = -Infinity;
       this.fallbackMouseDown = false;
       this.installSuppression();
@@ -237,12 +281,11 @@
           try { button.setPointerCapture(event.pointerId); } catch (_) {}
           this.inputHub.setSource(source, [this.parseButton(button)], false);
           button.classList.add('pressed');
+          this.noteActionDown(button);
         });
         button.addEventListener('pointermove', event => {
           if (this.actionPointers.get(event.pointerId) !== button) return;
-          const bounds = button.getBoundingClientRect();
-          if (event.clientX < bounds.left || event.clientX > bounds.right ||
-              event.clientY < bounds.top || event.clientY > bounds.bottom) {
+          if (!this.insideActionReleaseBounds(button, event.clientX, event.clientY)) {
             this.finishAction(event.pointerId, true);
           }
         });
@@ -273,6 +316,7 @@
             this.actionPointers.set(source, action);
             this.inputHub.setSource(source, [this.parseButton(action)], false);
             action.classList.add('pressed');
+            this.noteActionDown(action);
           } else if (this.stick.contains(touch.target) && this.stickPointer === null) {
             this.stickPointer = source;
             this.updateStick(touch.clientX, touch.clientY, source);
@@ -290,9 +334,7 @@
           }
           const action = this.actionPointers.get(source);
           if (action) {
-            const bounds = action.getBoundingClientRect();
-            if (touch.clientX < bounds.left || touch.clientX > bounds.right ||
-                touch.clientY < bounds.top || touch.clientY > bounds.bottom) {
+            if (!this.insideActionReleaseBounds(action, touch.clientX, touch.clientY)) {
               this.finishFallbackAction(source, true);
             }
             handled = true;
@@ -331,6 +373,7 @@
           this.actionPointers.set('mouse', action);
           this.inputHub.setSource('mouse', [this.parseButton(action)], false);
           action.classList.add('pressed');
+          this.noteActionDown(action);
         } else {
           this.stickPointer = 'mouse';
           this.updateStick(event.clientX, event.clientY, 'mouse');
@@ -359,12 +402,50 @@
       };
     }
 
+    insideActionReleaseBounds(button, clientX, clientY) {
+      const bounds = button.getBoundingClientRect();
+      const margin = this.config.actionReleaseMargin;
+      return clientX >= bounds.left - margin && clientX <= bounds.right + margin &&
+        clientY >= bounds.top - margin && clientY <= bounds.bottom + margin;
+    }
+
+    actionIsPhysicallyDown(id) {
+      return Array.from(this.actionPointers.values()).some(
+        button => Number(button.dataset.input) === id
+      );
+    }
+
+    noteActionDown(button) {
+      const id = Number(button.dataset.input);
+      if (id !== 0 && id !== 1) return;
+      const now = performance.now();
+      const other = id === 0 ? 1 : 0;
+      const otherAt = this.lastActionDown.get(other);
+      this.lastActionDown.set(id, now);
+      if (this.actionChordActive || !this.actionIsPhysicallyDown(other) ||
+          otherAt === undefined || now - otherAt > this.config.actionChordMs) return;
+      this.actionChordActive = true;
+      this.inputHub.rearmChord(
+        [{port: 0, id: 1}, {port: 0, id: 0}],
+        this.config.actionChordReleaseMs,
+        this.config.actionChordHoldMs
+      );
+    }
+
+    updateActionChordState() {
+      if (this.actionIsPhysicallyDown(0) && this.actionIsPhysicallyDown(1)) return;
+      this.actionChordActive = false;
+      if (!this.actionIsPhysicallyDown(0)) this.lastActionDown.delete(0);
+      if (!this.actionIsPhysicallyDown(1)) this.lastActionDown.delete(1);
+    }
+
     finishAction(pointerId, immediate) {
       const button = this.actionPointers.get(pointerId);
       if (!button) return;
       this.actionPointers.delete(pointerId);
       button.classList.remove('pressed');
       this.inputHub.releaseSource(this.sourceForPointer(pointerId), immediate);
+      this.updateActionChordState();
     }
 
     finishFallbackAction(source, immediate) {
@@ -373,6 +454,7 @@
       this.actionPointers.delete(source);
       button.classList.remove('pressed');
       this.inputHub.releaseSource(source, immediate);
+      this.updateActionChordState();
     }
 
     updateStick(clientX, clientY, source) {
@@ -440,6 +522,8 @@
       this.stickPointer = null;
       this.actionPointers.forEach(button => button.classList.remove('pressed'));
       this.actionPointers.clear();
+      this.lastActionDown.clear();
+      this.actionChordActive = false;
       this.fallbackMouseDown = false;
       this.resetKnob();
       this.inputHub.releaseAll(immediate);

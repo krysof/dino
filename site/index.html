@@ -108,8 +108,8 @@
       position: absolute;
       right: max(12px, var(--safe-right));
       bottom: max(12px, var(--safe-bottom));
-      display: grid; grid-template-columns: repeat(2, clamp(50px, 10vmin, 66px));
-      grid-template-rows: repeat(2, clamp(48px, 9vmin, 60px));
+      display: grid; grid-template-columns: repeat(2, clamp(58px, 12vmin, 76px));
+      grid-template-rows: repeat(2, clamp(56px, 11vmin, 70px));
       gap: clamp(6px, 1.5vmin, 10px);
       pointer-events: none;
     }
@@ -187,9 +187,9 @@
     <div id="stats"></div>
     <div id="safe-probe" aria-hidden="true"></div>
   </div>
-  <script src="mobile-game-shell.js?v=20260823-native-fix-2"></script>
+  <script src="mobile-game-shell.js?v=20260823-action-chord-1"></script>
   <script>
-    const DINO_ASSET_VERSION = '20260823-native-fix-2';
+    const DINO_ASSET_VERSION = '20260823-action-chord-1';
     const ui = Object.fromEntries([
       'app','canvas','stage-frame','controls-layer','stick-zone','stick-knob',
       'safe-probe','launch','start','status','stats'
@@ -247,6 +247,10 @@
           stickSizeMin: 120,
           stickSizeMax: 168,
           stickSizeRatio: 0.24,
+          actionChordMs: 160,
+          actionChordReleaseMs: 20,
+          actionChordHoldMs: 52,
+          actionReleaseMargin: 18,
           minimumPressMs: 34
         }
       },
@@ -292,6 +296,6 @@
       }
     });
   </script>
-  <script src="dino.js?v=20260823-native-fix-2"></script>
+  <script src="dino.js?v=20260823-action-chord-1"></script>
 </body>
 </html>
