@@ -1,26 +1,27 @@
-# Dino C++ / WebAssembly
+# Dino Pure Native C++ / WebAssembly
 
 **在线运行：** https://krysof.github.io/dino-cpp-wasm/
 
-这个仓库只承载 GitHub Pages 的编译后产物，不公开游戏主程序的 C++、汇编或反编译源码。
-浏览器必须由用户选择自己合法持有的 `dino.zip`；ROM 仅进入当前标签页的内存，不会上传。
+这个仓库只承载 GitHub Pages 的编译后二进制产物，不公开游戏主程序的 C++、汇编、
+反编译源码或生成脚本。页面无需选择或上传 ROM。
 
-## 为什么仍然需要 ROM
+## 发布物
 
-WASM 内包含播放器、CPS-1 兼容执行核心和已经编译的主 CPU 迁移逻辑，但不包含游戏受版权
-保护的图块、精灵、调色板、QSound/Z80 程序、声音采样以及主程序映像中的大量数据表。
-兼容核心也需要 ROM 集来建立原机内存映射并校验游戏。因此页面不能在没有 ROM 的情况下
-显示和播放完整游戏。
+- `site/dino.wasm`：逆向生成的 C++ 主程序和原生视频、内存、输入运行时；
+- `site/dino.data`：按已证明布局转换的图形、QSound 和主程序数据 `.bin` 数组包；
+- `site/dino.js`：Emscripten 浏览器装载胶水；
+- `site/index.html`：Canvas/WebAudio、键盘、手柄和触摸前端。
 
-把这些资源直接嵌入 WASM 虽然在技术上可行，但等同于公开分发 ROM 内容，所以本项目不这样做。
+主 CPU、视频、VBlank、内存和输入都不依赖 CPS/libretro/68000 模拟器。唯一允许的模拟
+边界是 Z80/QSound 音频。构建审计拒绝 C/C++、汇编、Python 源文件、ROM 压缩包以及
+libretro/CPS 执行核心符号；已验证主程序可执行 C++ 覆盖率为 100%。
 
-## 第三方核心来源
+## 声音第三方代码
 
-WASM 静态链接了 FB Alpha 2012 CPS-1 核心。按照其许可证要求，这里公开第三方核心的来源和
-本发行版对该核心所作的最小修改；这不是游戏逆向源码：
+声音模块使用未修改的 FB Alpha Z80 core：
 
-- 上游源码：[`libretro/fbalpha2012_cps1` 固定提交 `5542c184`](https://github.com/libretro/fbalpha2012_cps1/tree/5542c1848ef81e92db311193b01dc349bc29d7cc)
-- 修改补丁：[`third_party/fbalpha2012_modified_program_roms.patch`](third_party/fbalpha2012_modified_program_roms.patch)
-- 完整许可：[`site/fba-license.txt`](site/fba-license.txt)
+- [固定上游提交中的 Z80 源码](https://github.com/libretro/fbalpha2012_cps1/tree/5542c1848ef81e92db311193b01dc349bc29d7cc/src/cpu/z80)
+- [本发行版附带的完整许可](site/sound-core-license.txt)
 
-网页必需的 HTML、Emscripten JavaScript 胶水和 `.wasm` 编译产物仍会公开，否则浏览器无法加载。
+游戏名称、程序、图形与声音归各自权利人所有。本页为非商业逆向与可移植性演示，不隶属
+于 Capcom。

@@ -15,8 +15,7 @@
     h1 span { color:var(--acid); }
     .lead { color:var(--muted); margin:.2rem 0 1.3rem; }
     .panel { background:color-mix(in srgb,var(--panel) 92%,transparent); border:1px solid #34422f; box-shadow:0 18px 70px #0009; padding:clamp(12px,2vw,22px); }
-    .loader { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; margin-bottom:14px; }
-    input[type=file] { width:100%; color:var(--muted); border:1px dashed #63725d; padding:11px; background:#080c09; }
+    .loader { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
     button,.button { appearance:none; border:1px solid #6f8b5d; border-radius:3px; padding:10px 16px; background:#192416; color:var(--ink); font:inherit; font-weight:700; cursor:pointer; touch-action:none; user-select:none; }
     button:hover:not(:disabled),button:focus-visible { border-color:var(--acid); color:var(--acid); }
     button:disabled { opacity:.42; cursor:not-allowed; }
@@ -38,21 +37,21 @@
     code { color:var(--acid); }
     a { color:var(--acid); }
     footer { margin-top:28px; color:#82907e; font-size:.8rem; }
-    @media (max-width:650px) { .loader { grid-template-columns:1fr; }.controls { gap:10px; }.dpad { grid-template-columns:repeat(3,48px); }.panel { padding:10px; } }
+    @media (max-width:650px) { .loader { align-items:stretch; flex-direction:column; }.controls { gap:10px; }.dpad { grid-template-columns:repeat(3,48px); }.panel { padding:10px; } }
   </style>
 </head>
 <body>
 <main>
   <h1>Dino <span>C++ / WASM</span></h1>
-  <p class="lead">主 CPU 由逆向生成的 C++ 执行；CPS-1 图形、声音和时序由固定版本兼容核心提供。</p>
+  <p class="lead">主 CPU、视频、输入和内存全部运行逆向生成的原生 C++；仅 Z80/QSound 音频使用允许的模拟代码。</p>
   <section class="panel">
     <div class="loader">
-      <input id="rom" type="file" accept=".zip,application/zip" aria-label="选择自己合法持有的 dino.zip">
       <button id="start" disabled>启动游戏</button>
+      <span id="loadnote">正在下载原生二进制与资源数组…</span>
     </div>
     <div id="screen"><canvas id="canvas" width="768" height="576" tabindex="0" oncontextmenu="event.preventDefault()"></canvas></div>
     <p id="status" role="status">正在载入 WebAssembly…</p>
-    <div id="stats">ROM 不会上传到服务器；文件仅进入当前标签页的内存。</div>
+    <div id="stats">无需 ROM：已逆向资源由二进制数组包提供；主程序 C++ 覆盖率 100%。</div>
     <div class="toolbar">
       <button id="pause" disabled>暂停</button><button id="reset" disabled>复位</button>
       <label><input id="mute" type="checkbox"> 静音</label>
@@ -68,45 +67,47 @@
       </div>
     </div>
     <details>
-      <summary>键盘、手柄与 ROM 说明</summary>
+      <summary>键盘、手柄与实现说明</summary>
       <p>1P：方向键、<code>Z</code> 攻击、<code>X</code> 跳跃、右 <code>Shift</code> 投币、<code>Enter</code> 开始。2P：<code>WASD</code>、<code>F/G</code>、<code>R/T</code>。支持标准游戏手柄。</p>
-      <p>本站不包含、上传或保存 ROM。请自行选择合法持有且与 FB Alpha/MAME Dino 世界版集合相符的 <code>dino.zip</code>；不要解压。</p>
+      <p>网页不加载 ROM，也不链接 CPS/libretro/68000 模拟器。图形、声音及已证明的主程序数据已按逆向映射转为 <code>.bin</code> 数组，并封装在 <code>dino.data</code> 中。</p>
     </details>
   </section>
   <footer>
     非商业逆向与移植演示。游戏名称、程序、图形及声音归各自权利人所有。本站不隶属于 Capcom。
-    执行核心条款见 <a href="fba-license.txt">FB Alpha license</a>；
-    <a href="https://github.com/krysof/dino-cpp-wasm">项目与第三方来源说明</a>。
+    声音所用 Z80 第三方代码条款见 <a href="sound-core-license.txt">sound core license</a>；
+    <a href="https://github.com/libretro/fbalpha2012_cps1/tree/5542c1848ef81e92db311193b01dc349bc29d7cc/src/cpu/z80">未修改的 Z80 源码</a>。
   </footer>
 </main>
 <script>
-  const ui = Object.fromEntries(['rom','start','canvas','status','stats','pause','reset','mute'].map(id => [id, document.getElementById(id)]));
-  let wasmReady = false, romReady = false, started = false, paused = false;
+  const ui = Object.fromEntries(['start','canvas','status','stats','pause','reset','mute','loadnote'].map(id => [id, document.getElementById(id)]));
+  let wasmReady = false, started = false, paused = false;
   function setStatus(message, error = false) { ui.status.textContent = message; ui.status.classList.toggle('error', error); }
   var Module = {
     canvas: ui.canvas,
     print: text => console.log(text),
     printErr: text => console.error(text),
-    onRuntimeInitialized() { wasmReady = true; setStatus('WASM 已就绪；请选择 dino.zip'); refreshStart(); },
+    setStatus(text) { if (!wasmReady) setStatus(text || '正在载入 WebAssembly 与资源数组…'); },
+    onRuntimeInitialized() {
+      wasmReady = true; ui.loadnote.textContent = '原生二进制与资源已就绪';
+      setStatus('WASM 已就绪；点击启动'); refreshStart();
+      if (new URLSearchParams(location.search).has('autostart')) setTimeout(() => ui.start.click(), 0);
+    },
     onDinoStatus: setStatus,
-    onDinoStats(s) { ui.stats.textContent = `帧 ${s.frames.toLocaleString()} · C++ 指令 ${s.cppInstructions.toLocaleString()} · 主 CPU 回退 ${s.fallbacks}`; }
+    onDinoStats(s) {
+      ui.stats.textContent = `帧 ${s.frames.toLocaleString()} · C++ 指令 ${s.cppInstructions.toLocaleString()} · QSound 写入 ${s.audioWrites.toLocaleString()} · 原生覆盖率 ${s.nativeCoverage}%`;
+      document.body.dataset.nativeFrames = s.frames;
+      document.body.dataset.nativeCoverage = s.nativeCoverage;
+      document.body.dataset.qsoundWrites = s.audioWrites;
+    }
   };
-  function refreshStart() { ui.start.disabled = !(wasmReady && romReady) || started; }
-  ui.rom.addEventListener('change', async () => {
-    romReady = false; refreshStart();
-    const file = ui.rom.files[0]; if (!file) return;
-    setStatus(`正在读取 ${file.name}…`);
-    try {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      try { Module.FS.unlink('/rom/dino.zip'); } catch (_) {}
-      Module.FS.writeFile('/rom/dino.zip', bytes);
-      romReady = true; setStatus(`已在本地内存载入 ${file.name}（${(bytes.length/1048576).toFixed(1)} MiB），点击启动`);
-    } catch (error) { setStatus(`读取失败：${error.message}`, true); }
-    refreshStart();
-  });
+  function refreshStart() { ui.start.disabled = !wasmReady || started; }
   ui.start.addEventListener('click', () => {
-    const result = Module.ccall('dino_start', 'number', ['string','number'], ['/rom/dino.zip', ui.mute.checked ? 1 : 0]);
-    if (result === 0) { started = true; ui.pause.disabled = false; ui.reset.disabled = false; ui.rom.disabled = true; refreshStart(); ui.canvas.focus(); }
+    const result = Module.ccall('dino_start', 'number', ['number'], [ui.mute.checked ? 1 : 0]);
+    if (result === 0) {
+      started = true; ui.pause.disabled = false; ui.reset.disabled = false; refreshStart(); ui.canvas.focus();
+      const smoke = +new URLSearchParams(location.search).get('smoke');
+      if (smoke > 0) Module.ccall('dino_run_smoke_frames', null, ['number'], [smoke]);
+    }
   });
   ui.pause.addEventListener('click', () => { paused = !paused; Module.ccall('dino_set_paused', null, ['number'], [paused ? 1 : 0]); ui.pause.textContent = paused ? '继续' : '暂停'; setStatus(paused ? '已暂停' : '运行中'); });
   ui.reset.addEventListener('click', () => { Module.ccall('dino_reset'); setStatus('已复位'); ui.canvas.focus(); });
