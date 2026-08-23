@@ -3,123 +3,142 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#000000">
   <link rel="icon" href="data:,">
-  <title>Dino C++ / WebAssembly</title>
+  <title>Dino</title>
   <style>
-    :root { --bg:#090d0b; --panel:#111914; --ink:#eaf5e7; --muted:#a9b8a6; --acid:#b9f227; --red:#ff6b5f; }
-    * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; color:var(--ink); background:radial-gradient(circle at 50% 0,#26341e 0,#0c120e 38rem,var(--bg) 70rem); font:16px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
-    main { width:min(1120px,100%); margin:auto; padding:clamp(16px,3vw,32px); }
-    h1 { margin:.2rem 0; font-size:clamp(1.7rem,5vw,3.5rem); letter-spacing:-.06em; text-transform:uppercase; }
-    h1 span { color:var(--acid); }
-    .lead { color:var(--muted); margin:.2rem 0 1.3rem; }
-    .panel { background:color-mix(in srgb,var(--panel) 92%,transparent); border:1px solid #34422f; box-shadow:0 18px 70px #0009; padding:clamp(12px,2vw,22px); }
-    .loader { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
-    button,.button { appearance:none; border:1px solid #6f8b5d; border-radius:3px; padding:10px 16px; background:#192416; color:var(--ink); font:inherit; font-weight:700; cursor:pointer; touch-action:none; user-select:none; }
-    button:hover:not(:disabled),button:focus-visible { border-color:var(--acid); color:var(--acid); }
-    button:disabled { opacity:.42; cursor:not-allowed; }
-    #start { background:var(--acid); color:#10160d; border-color:var(--acid); }
-    #screen { position:relative; aspect-ratio:4/3; width:100%; background:#000; border:2px solid #34422f; overflow:hidden; }
-    canvas { width:100%; height:100%; display:block; image-rendering:pixelated; outline:none; }
-    #status { min-height:2.1rem; margin:.7rem 0 0; color:var(--acid); }
-    #status.error { color:var(--red); }
-    #stats { color:var(--muted); font-size:.85rem; }
-    .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin-top:12px; }
-    label { color:var(--muted); }
-    .controls { display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; margin-top:16px; }
-    .dpad { display:grid; grid-template-columns:repeat(3,58px); grid-template-rows:repeat(3,48px); gap:5px; }
-    .dpad button[data-id="4"] { grid-column:2; }.dpad button[data-id="6"] { grid-column:1;grid-row:2; }.dpad button[data-id="7"] { grid-column:3;grid-row:2; }.dpad button[data-id="5"] { grid-column:2;grid-row:3; }
-    .actions { display:grid; grid-template-columns:repeat(2,minmax(68px,1fr)); gap:9px; }
-    .actions button { min-height:52px; }
-    .actions .attack { border-color:#dfb739; }.actions .jump { border-color:#5ab6ed; }
-    details { margin-top:18px; color:var(--muted); }
-    code { color:var(--acid); }
-    a { color:var(--acid); }
-    footer { margin-top:28px; color:#82907e; font-size:.8rem; }
-    @media (max-width:650px) { .loader { align-items:stretch; flex-direction:column; }.controls { gap:10px; }.dpad { grid-template-columns:repeat(3,48px); }.panel { padding:10px; } }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #000; }
+    body { color: #fff; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    #game { position: fixed; inset: 0; display: grid; place-items: center; background: #000; }
+    canvas {
+      width: 100vw; height: 100vh; display: block; background: #000;
+      image-rendering: pixelated; outline: none;
+    }
+    #launch {
+      position: absolute; inset: 0; z-index: 10; display: grid; place-items: center;
+      background: #000;
+    }
+    button {
+      appearance: none; border: 2px solid #d7ff36; border-radius: 4px;
+      background: #b9f227; color: #10160d; padding: 14px 32px;
+      font: 700 18px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      touch-action: none; user-select: none;
+    }
+    button:disabled { opacity: .45; }
+    #status {
+      position: absolute; left: 50%; top: 50%; z-index: 12; display: none;
+      max-width: min(90vw, 640px); transform: translate(-50%, -50%);
+      padding: 16px 20px; border: 1px solid #ff665f; background: #170605e8;
+      color: #ffaaa4; text-align: center;
+    }
+    #touch { display: none; }
+    #stats { display: none; }
+    @media (pointer: coarse) {
+      #touch.active {
+        position: absolute; inset: auto 0 max(12px, env(safe-area-inset-bottom)); z-index: 8;
+        display: flex; align-items: end; justify-content: space-between;
+        padding: 0 max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left));
+        pointer-events: none;
+      }
+      #touch button {
+        width: 58px; min-width: 58px; height: 52px; padding: 0;
+        border-color: #ffffff55; background: #00000066; color: #fff;
+        backdrop-filter: blur(3px); pointer-events: auto;
+      }
+      .dpad { display: grid; grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(2, 52px); gap: 5px; }
+      .dpad [data-id="4"] { grid-column: 2; }
+      .dpad [data-id="6"] { grid-column: 1; grid-row: 2; }
+      .dpad [data-id="5"] { grid-column: 2; grid-row: 2; }
+      .dpad [data-id="7"] { grid-column: 3; grid-row: 2; }
+      .actions { display: grid; grid-template-columns: repeat(2, 62px); gap: 7px; }
+      .actions button { width: 62px; min-width: 62px; }
+      .actions .wide { grid-column: span 2; width: 131px; }
+    }
   </style>
 </head>
 <body>
-<main>
-  <h1>Dino <span>C++ / WASM</span></h1>
-  <p class="lead">主 CPU、视频、输入和内存全部运行逆向生成的原生 C++；仅 Z80/QSound 音频使用允许的模拟代码。</p>
-  <section class="panel">
-    <div class="loader">
-      <button id="start" disabled>启动游戏</button>
-      <span id="loadnote">正在下载原生二进制与资源数组…</span>
-    </div>
-    <div id="screen"><canvas id="canvas" width="768" height="576" tabindex="0" oncontextmenu="event.preventDefault()"></canvas></div>
-    <p id="status" role="status">正在载入 WebAssembly…</p>
-    <div id="stats">无需 ROM：已逆向资源由二进制数组包提供；主程序 C++ 覆盖率 100%。</div>
-    <div class="toolbar">
-      <button id="pause" disabled>暂停</button><button id="reset" disabled>复位</button>
-      <label><input id="mute" type="checkbox"> 静音</label>
-    </div>
-    <div class="controls" aria-label="触摸控制">
+  <div id="game">
+    <canvas id="canvas" width="768" height="576" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+    <div id="launch"><button id="start" disabled>加载中…</button></div>
+    <div id="status" role="alert"></div>
+    <div id="touch" aria-label="触摸控制">
       <div class="dpad">
-        <button data-port="0" data-id="4">▲</button><button data-port="0" data-id="6">◀</button>
-        <button data-port="0" data-id="7">▶</button><button data-port="0" data-id="5">▼</button>
+        <button data-port="0" data-id="4">▲</button>
+        <button data-port="0" data-id="6">◀</button>
+        <button data-port="0" data-id="5">▼</button>
+        <button data-port="0" data-id="7">▶</button>
       </div>
       <div class="actions">
-        <button data-port="0" data-id="2">投币</button><button data-port="0" data-id="3">开始</button>
-        <button class="attack" data-port="0" data-id="1">攻击</button><button class="jump" data-port="0" data-id="0">跳跃</button>
+        <button data-port="0" data-id="1">攻击</button>
+        <button data-port="0" data-id="0">跳跃</button>
+        <button data-port="0" data-id="2">投币</button>
+        <button data-port="0" data-id="3">开始</button>
       </div>
     </div>
-    <details>
-      <summary>键盘、手柄与实现说明</summary>
-      <p>1P：方向键、<code>Z</code> 攻击、<code>X</code> 跳跃、右 <code>Shift</code> 投币、<code>Enter</code> 开始。2P：<code>WASD</code>、<code>F/G</code>、<code>R/T</code>。支持标准游戏手柄。</p>
-      <p>网页不加载 ROM，也不链接 CPS/libretro/68000 模拟器。图形、声音及已证明的主程序数据已按逆向映射转为 <code>.bin</code> 数组，并封装在 <code>dino.data</code> 中。</p>
-    </details>
-  </section>
-  <footer>
-    非商业逆向与移植演示。游戏名称、程序、图形及声音归各自权利人所有。本站不隶属于 Capcom。
-    声音所用 Z80 第三方代码条款见 <a href="sound-core-license.txt">sound core license</a>；
-    <a href="https://github.com/libretro/fbalpha2012_cps1/tree/5542c1848ef81e92db311193b01dc349bc29d7cc/src/cpu/z80">未修改的 Z80 源码</a>。
-  </footer>
-</main>
-<script>
-  const ui = Object.fromEntries(['start','canvas','status','stats','pause','reset','mute','loadnote'].map(id => [id, document.getElementById(id)]));
-  let wasmReady = false, started = false, paused = false;
-  function setStatus(message, error = false) { ui.status.textContent = message; ui.status.classList.toggle('error', error); }
-  var Module = {
-    canvas: ui.canvas,
-    print: text => console.log(text),
-    printErr: text => console.error(text),
-    setStatus(text) { if (!wasmReady) setStatus(text || '正在载入 WebAssembly 与资源数组…'); },
-    onRuntimeInitialized() {
-      wasmReady = true; ui.loadnote.textContent = '原生二进制与资源已就绪';
-      setStatus('WASM 已就绪；点击启动'); refreshStart();
-      if (new URLSearchParams(location.search).has('autostart')) setTimeout(() => ui.start.click(), 0);
-    },
-    onDinoStatus: setStatus,
-    onDinoStats(s) {
-      ui.stats.textContent = `帧 ${s.frames.toLocaleString()} · C++ 指令 ${s.cppInstructions.toLocaleString()} · QSound 写入 ${s.audioWrites.toLocaleString()} · 原生覆盖率 ${s.nativeCoverage}%`;
-      document.body.dataset.nativeFrames = s.frames;
-      document.body.dataset.nativeCoverage = s.nativeCoverage;
-      document.body.dataset.qsoundWrites = s.audioWrites;
+    <div id="stats"></div>
+  </div>
+  <script>
+    const ui = Object.fromEntries(['canvas','launch','start','status','touch','stats'].map(id => [id, document.getElementById(id)]));
+    let wasmReady = false, started = false, paused = false;
+    function setStatus(message, error = false) {
+      if (!error) return;
+      ui.status.textContent = message;
+      ui.status.style.display = 'block';
     }
-  };
-  function refreshStart() { ui.start.disabled = !wasmReady || started; }
-  ui.start.addEventListener('click', () => {
-    const result = Module.ccall('dino_start', 'number', ['number'], [ui.mute.checked ? 1 : 0]);
-    if (result === 0) {
-      started = true; ui.pause.disabled = false; ui.reset.disabled = false; refreshStart(); ui.canvas.focus();
+    var Module = {
+      canvas: ui.canvas,
+      print: text => console.log(text),
+      printErr: text => console.error(text),
+      setStatus() {},
+      onRuntimeInitialized() {
+        wasmReady = true;
+        ui.start.disabled = false;
+        ui.start.textContent = '开始';
+        if (new URLSearchParams(location.search).has('autostart')) setTimeout(() => ui.start.click(), 0);
+      },
+      onDinoStatus: setStatus,
+      onDinoStats(s) {
+        ui.stats.textContent = `${s.frames}/${s.cppInstructions}/${s.audioWrites}/${s.nativeCoverage}`;
+        document.body.dataset.nativeFrames = s.frames;
+        document.body.dataset.nativeCoverage = s.nativeCoverage;
+        document.body.dataset.qsoundWrites = s.audioWrites;
+      }
+    };
+    ui.start.addEventListener('click', () => {
+      if (!wasmReady || started) return;
+      const result = Module.ccall('dino_start', 'number', ['number'], [0]);
+      if (result !== 0) return;
+      started = true;
+      ui.launch.style.display = 'none';
+      ui.touch.classList.add('active');
+      ui.canvas.focus();
       const smoke = +new URLSearchParams(location.search).get('smoke');
       if (smoke > 0) Module.ccall('dino_run_smoke_frames', null, ['number'], [smoke]);
-    }
-  });
-  ui.pause.addEventListener('click', () => { paused = !paused; Module.ccall('dino_set_paused', null, ['number'], [paused ? 1 : 0]); ui.pause.textContent = paused ? '继续' : '暂停'; setStatus(paused ? '已暂停' : '运行中'); });
-  ui.reset.addEventListener('click', () => { Module.ccall('dino_reset'); setStatus('已复位'); ui.canvas.focus(); });
-  ui.mute.addEventListener('change', () => { if (started) Module.ccall('dino_set_muted', null, ['number'], [ui.mute.checked ? 1 : 0]); });
-  document.querySelectorAll('[data-port][data-id]').forEach(button => {
-    const send = pressed => { if (started) Module.ccall('dino_set_button', null, ['number','number','number'], [+button.dataset.port,+button.dataset.id,pressed]); };
-    button.addEventListener('pointerdown', event => { event.preventDefault(); button.setPointerCapture(event.pointerId); send(1); });
-    ['pointerup','pointercancel','lostpointercapture'].forEach(name => button.addEventListener(name, event => { event.preventDefault(); send(0); }));
-  });
-  window.addEventListener('keydown', event => { if (started && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(event.key)) event.preventDefault(); }, {passive:false});
-  document.addEventListener('visibilitychange', () => { if (started && document.hidden && !paused) ui.pause.click(); });
-</script>
-<script src="dino.js"></script>
+    });
+    document.querySelectorAll('[data-port][data-id]').forEach(button => {
+      const send = pressed => {
+        if (started) Module.ccall('dino_set_button', null, ['number','number','number'], [+button.dataset.port,+button.dataset.id,pressed]);
+      };
+      button.addEventListener('pointerdown', event => {
+        event.preventDefault(); button.setPointerCapture(event.pointerId); send(1);
+      });
+      ['pointerup','pointercancel','lostpointercapture'].forEach(name => button.addEventListener(name, event => {
+        event.preventDefault(); send(0);
+      }));
+    });
+    window.addEventListener('keydown', event => {
+      if (started && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(event.key)) event.preventDefault();
+    }, {passive:false});
+    document.addEventListener('visibilitychange', () => {
+      if (!started) return;
+      const nextPaused = document.hidden;
+      if (nextPaused !== paused) {
+        paused = nextPaused;
+        Module.ccall('dino_set_paused', null, ['number'], [paused ? 1 : 0]);
+      }
+    });
+  </script>
+  <script src="dino.js"></script>
 </body>
 </html>
