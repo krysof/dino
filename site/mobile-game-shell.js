@@ -21,6 +21,9 @@
       directions: 8,
       deadZone: 0.22,
       sensitivity: 1,
+      stickSizeMin: 120,
+      stickSizeMax: 168,
+      stickSizeRatio: 0.24,
       minimumPressMs: 34,
       compatibilityMouseDelayMs: 720
     })
@@ -564,6 +567,11 @@
       const contentWidth = Math.max(1, viewport.width - safe.left - safe.right);
       const contentHeight = Math.max(1, viewport.height - safe.top - safe.bottom);
       const aspect = this.config.logicalWidth / this.config.logicalHeight;
+      const stickSize = clamp(
+        Math.min(viewport.width, viewport.height) * this.config.controls.stickSizeRatio,
+        this.config.controls.stickSizeMin,
+        this.config.controls.stickSizeMax
+      );
       const portrait = Boolean(
         this.active && this.touchCapable && viewport.height > viewport.width
       );
@@ -573,6 +581,7 @@
       this.app.style.setProperty('--viewport-top', `${viewport.top}px`);
       this.app.style.setProperty('--viewport-width', `${viewport.width}px`);
       this.app.style.setProperty('--viewport-height', `${viewport.height}px`);
+      this.app.style.setProperty('--stick-size', `${stickSize}px`);
 
       let stageWidth;
       let stageHeight;
@@ -589,10 +598,13 @@
         this.currentRotation = 0;
         this.controlsRoot.dataset.layout = 'landscape';
       } else if (portraitFallback) {
-        const controlBand = this.touchCapable ? clamp(
-          contentHeight * this.config.layout.portraitControlBandRatio,
-          this.config.layout.portraitControlBandMin,
-          this.config.layout.portraitControlBandMax
+        const controlBand = this.touchCapable ? Math.max(
+          stickSize + margin * 2,
+          clamp(
+            contentHeight * this.config.layout.portraitControlBandRatio,
+            this.config.layout.portraitControlBandMin,
+            this.config.layout.portraitControlBandMax
+          )
         ) : 0;
         const availableHeight = Math.max(1, contentHeight - controlBand - margin);
         // The unrotated logical width becomes the displayed bounding height.
@@ -603,10 +615,13 @@
         this.currentRotation = this.config.portraitRotation;
         this.controlsRoot.dataset.layout = 'portrait';
       } else if (portrait) {
-        const controlBand = clamp(
-          contentHeight * this.config.layout.portraitControlBandRatio,
-          this.config.layout.portraitControlBandMin,
-          this.config.layout.portraitControlBandMax
+        const controlBand = Math.max(
+          stickSize + margin * 2,
+          clamp(
+            contentHeight * this.config.layout.portraitControlBandRatio,
+            this.config.layout.portraitControlBandMin,
+            this.config.layout.portraitControlBandMax
+          )
         );
         const availableWidth = Math.max(1, contentWidth - margin * 2);
         const availableHeight = Math.max(1, contentHeight - controlBand - margin * 2);
@@ -619,10 +634,13 @@
       } else {
         let gutter = 0;
         if (this.active && this.touchCapable) {
-          gutter = clamp(
-            contentWidth * this.config.layout.touchGutterRatio,
-            this.config.layout.touchGutterMin,
-            this.config.layout.touchGutterMax
+          gutter = Math.max(
+            stickSize + margin,
+            clamp(
+              contentWidth * this.config.layout.touchGutterRatio,
+              this.config.layout.touchGutterMin,
+              this.config.layout.touchGutterMax
+            )
           );
           gutter = Math.min(gutter, Math.max(0, (contentWidth - 192) / 2));
         }

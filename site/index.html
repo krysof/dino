@@ -20,6 +20,7 @@
       --safe-left: env(safe-area-inset-left, 0px);
       --stick-x: 0px;
       --stick-y: 0px;
+      --stick-size: 132px;
     }
     * { box-sizing: border-box; }
     html, body {
@@ -78,8 +79,8 @@
       position: absolute;
       left: max(12px, var(--safe-left));
       bottom: max(12px, var(--safe-bottom));
-      width: clamp(96px, 20vmin, 132px);
-      height: clamp(96px, 20vmin, 132px);
+      width: var(--stick-size);
+      height: var(--stick-size);
       border-radius: 50%;
       pointer-events: auto;
     }
@@ -96,7 +97,7 @@
     .stick-cross::before { width: 72%; height: 1px; }
     .stick-cross::after { width: 1px; height: 72%; }
     #stick-knob {
-      position: absolute; left: 50%; top: 50%; width: 44%; height: 44%;
+      position: absolute; left: 50%; top: 50%; width: 48%; height: 48%;
       border: 2px solid #ffffffaa; border-radius: 50%;
       background: #b9f227bb;
       box-shadow: 0 2px 8px #000b;
@@ -235,7 +236,15 @@
         logicalHeight: 224,
         orientationLock: null,
         rotatePortraitFallback: false,
-        controls: {directions: 8, deadZone: 0.22, sensitivity: 1, minimumPressMs: 34}
+        controls: {
+          directions: 8,
+          deadZone: 0.22,
+          sensitivity: 1,
+          stickSizeMin: 120,
+          stickSizeMax: 168,
+          stickSizeRatio: 0.24,
+          minimumPressMs: 34
+        }
       },
       onInput(port, id, pressed) {
         if (started) Module.ccall(
