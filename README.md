@@ -1,6 +1,6 @@
 # Dino Pure Native C++ / WebAssembly
 
-**在线运行：** https://krysof.github.io/dino-cpp-wasm/
+**在线运行：** https://krysof.github.io/dino/
 
 这个仓库只承载 GitHub Pages 的编译后二进制产物，不公开游戏主程序的 C++、汇编、
 反编译源码或生成脚本。页面无需选择或上传 ROM。
