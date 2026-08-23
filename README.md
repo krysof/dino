@@ -8,10 +8,14 @@
 ## 发布物
 
 - `site/dino.wasm`：逆向生成的 C++ 主程序和原生视频、内存、输入运行时；
-- `site/dino.data`：按已证明布局转换的图形、QSound 和主程序数据 `.bin` 数组包；
+- `site/dino.data`：按已证明布局转换的图形、QSound、主程序数据 `.bin` 数组，以及八关已编译 Lua 关卡脚本；
 - `site/dino.js`：Emscripten 浏览器装载胶水；
 - `site/mobile-game-shell.js`：响应式横屏/竖屏降级与多点触控输入层；
 - `site/index.html`：Canvas/WebAudio、键盘、手柄和触摸前端。
+
+八关 Lua 只负责敌人/道具出现位置、容器内容、锁屏波次和关卡推进数据；敌人 AI、碰撞、
+动画与对象状态机仍由 C++ 执行。发布包仅包含剥离调试信息后的 Lua 5.4 字节码，不包含
+可编辑的 `.lua` 源文件；Lua 许可见 `site/lua-license.html`。
 
 主 CPU、视频、VBlank、内存和输入都不依赖 CPS/libretro/68000 模拟器。唯一允许的模拟
 边界是 Z80/QSound 音频。构建审计拒绝 C/C++、汇编、Python 源文件、ROM 压缩包以及
