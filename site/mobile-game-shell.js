@@ -21,9 +21,15 @@
       directions: 8,
       deadZone: 0.22,
       sensitivity: 1,
-      stickSizeMin: 120,
-      stickSizeMax: 168,
-      stickSizeRatio: 0.24,
+      stickSizeMin: 152,
+      stickSizeMax: 216,
+      stickSizeRatio: 0.31,
+      actionSizeMin: 68,
+      actionSizeMax: 96,
+      actionSizeRatio: 0.48,
+      actionGapMin: 8,
+      actionGapMax: 12,
+      actionGapRatio: 0.06,
       minimumPressMs: 34,
       actionChordMs: 160,
       actionChordReleaseMs: 20,
@@ -652,7 +658,7 @@
       const contentWidth = Math.max(1, viewport.width - safe.left - safe.right);
       const contentHeight = Math.max(1, viewport.height - safe.top - safe.bottom);
       const aspect = this.config.logicalWidth / this.config.logicalHeight;
-      const stickSize = clamp(
+      let stickSize = clamp(
         Math.min(viewport.width, viewport.height) * this.config.controls.stickSizeRatio,
         this.config.controls.stickSizeMin,
         this.config.controls.stickSizeMax
@@ -661,12 +667,53 @@
         this.active && this.touchCapable && viewport.height > viewport.width
       );
       const portraitFallback = portrait && this.config.rotatePortraitFallback;
+      let actionGap = clamp(
+        stickSize * this.config.controls.actionGapRatio,
+        this.config.controls.actionGapMin,
+        this.config.controls.actionGapMax
+      );
+      let actionSize = clamp(
+        stickSize * this.config.controls.actionSizeRatio,
+        this.config.controls.actionSizeMin,
+        this.config.controls.actionSizeMax
+      );
+      if (portrait) {
+        // Keep both control clusters usable on narrow viewports. Normal phones
+        // receive the preferred enlarged sizes; only genuinely narrow viewports
+        // scale them down, without any model- or resolution-specific branch.
+        const stickLimit = contentWidth - margin * 3 -
+          this.config.controls.actionGapMin - this.config.controls.actionSizeMin * 2;
+        stickSize = Math.min(stickSize, Math.max(96, stickLimit));
+        actionGap = clamp(
+          stickSize * this.config.controls.actionGapRatio,
+          this.config.controls.actionGapMin,
+          this.config.controls.actionGapMax
+        );
+        actionSize = Math.min(
+          clamp(
+            stickSize * this.config.controls.actionSizeRatio,
+            this.config.controls.actionSizeMin,
+            this.config.controls.actionSizeMax
+          ),
+          Math.max(52, (contentWidth - stickSize - margin * 3 - actionGap) / 2)
+        );
+        const controlBudget = Math.max(1, contentWidth - margin * 3);
+        const controlWidth = stickSize + actionSize * 2 + actionGap;
+        if (controlWidth > controlBudget) {
+          const scale = controlBudget / controlWidth;
+          stickSize *= scale;
+          actionSize *= scale;
+          actionGap *= scale;
+        }
+      }
 
       this.app.style.setProperty('--viewport-left', `${viewport.left}px`);
       this.app.style.setProperty('--viewport-top', `${viewport.top}px`);
       this.app.style.setProperty('--viewport-width', `${viewport.width}px`);
       this.app.style.setProperty('--viewport-height', `${viewport.height}px`);
       this.app.style.setProperty('--stick-size', `${stickSize}px`);
+      this.app.style.setProperty('--action-size', `${actionSize}px`);
+      this.app.style.setProperty('--control-gap', `${actionGap}px`);
 
       let stageWidth;
       let stageHeight;

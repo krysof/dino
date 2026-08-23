@@ -20,7 +20,9 @@
       --safe-left: env(safe-area-inset-left, 0px);
       --stick-x: 0px;
       --stick-y: 0px;
-      --stick-size: 132px;
+      --stick-size: 152px;
+      --action-size: 73px;
+      --control-gap: 9px;
     }
     * { box-sizing: border-box; }
     html, body {
@@ -117,23 +119,27 @@
       position: absolute;
       right: max(12px, var(--safe-right));
       bottom: max(12px, var(--safe-bottom));
-      display: grid; grid-template-columns: repeat(2, clamp(58px, 12vmin, 76px));
-      grid-template-rows: repeat(2, clamp(56px, 11vmin, 70px));
-      gap: clamp(6px, 1.5vmin, 10px);
+      display: grid;
+      grid-template-columns: repeat(2, var(--action-size));
+      grid-template-rows: repeat(2, var(--action-size));
+      gap: var(--control-gap);
       pointer-events: none;
     }
     .control-button {
       appearance: none; min-width: 0; padding: 0;
       border: 2px solid #ffffff66; border-radius: 50%;
       background: #00000078; color: #fff;
-      font: 700 clamp(12px, 2.4vmin, 16px)/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font: 700 clamp(14px, calc(var(--stick-size) * .105), 19px)/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       text-shadow: 0 1px 2px #000;
       box-shadow: 0 2px 10px #0009;
       backdrop-filter: blur(3px);
       pointer-events: auto;
     }
     .control-button.primary { border-color: #d7ff3699; background: #668b18a8; }
-    .control-button.utility { border-radius: 12px; font-size: clamp(10px, 2vmin, 13px); }
+    .control-button.utility {
+      border-radius: 14px;
+      font-size: clamp(12px, calc(var(--stick-size) * .085), 16px);
+    }
     .control-button.pressed, .control-button:active {
       transform: translateY(1px) scale(.96);
       filter: brightness(1.35);
@@ -243,9 +249,9 @@
     <div id="stats"></div>
     <div id="safe-probe" aria-hidden="true"></div>
   </div>
-  <script src="mobile-game-shell.js?v=20260824-lua-stages-1"></script>
+  <script src="mobile-game-shell.js?v=20260824-large-touch-controls-1"></script>
   <script>
-    const DINO_ASSET_VERSION = '20260824-lua-stages-1';
+    const DINO_ASSET_VERSION = '20260824-large-touch-controls-1';
     const ui = Object.fromEntries([
       'app','canvas','stage-frame','controls-layer','stick-zone','stick-knob',
       'safe-probe','launch','start','fullscreen','status','stats','pause-overlay'
@@ -313,9 +319,15 @@
           directions: 8,
           deadZone: 0.22,
           sensitivity: 1,
-          stickSizeMin: 120,
-          stickSizeMax: 168,
-          stickSizeRatio: 0.24,
+          stickSizeMin: 152,
+          stickSizeMax: 216,
+          stickSizeRatio: 0.31,
+          actionSizeMin: 68,
+          actionSizeMax: 96,
+          actionSizeRatio: 0.48,
+          actionGapMin: 8,
+          actionGapMax: 12,
+          actionGapRatio: 0.06,
           actionChordMs: 160,
           actionChordReleaseMs: 20,
           actionChordHoldMs: 52,
@@ -407,6 +419,6 @@
       syncPause();
     });
   </script>
-  <script src="dino.js?v=20260824-lua-stages-1"></script>
+  <script src="dino.js?v=20260824-large-touch-controls-1"></script>
 </body>
 </html>
