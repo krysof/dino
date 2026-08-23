@@ -158,7 +158,17 @@
     #keyboard-help span[role="row"] { display: contents; }
     @media (pointer: coarse) {
       #keyboard-help { display: none; }
+      #fullscreen { display: none !important; }
     }
+    #fullscreen {
+      position: absolute; z-index: 16;
+      top: max(12px, var(--safe-top)); right: max(12px, var(--safe-right));
+      width: 42px; height: 42px; padding: 0;
+      border: 1px solid #ffffff66; border-radius: 8px;
+      background: #000000a8; color: #fff;
+      font: 700 24px/1 sans-serif; cursor: pointer; touch-action: manipulation;
+    }
+    #fullscreen[hidden] { display: none; }
     #status {
       position: absolute; left: 50%; top: 50%; z-index: 24; display: none;
       max-width: min(90vw, 640px); transform: translate(-50%, -50%);
@@ -207,16 +217,17 @@
         </div>
       </div>
     </div>
+    <button id="fullscreen" type="button" aria-label="进入全屏" title="进入全屏" hidden>⛶</button>
     <div id="status" role="alert"></div>
     <div id="stats"></div>
     <div id="safe-probe" aria-hidden="true"></div>
   </div>
-  <script src="mobile-game-shell.js?v=20260823-mame-keys-1"></script>
+  <script src="mobile-game-shell.js?v=20260823-pacing-fullscreen-1"></script>
   <script>
-    const DINO_ASSET_VERSION = '20260823-mame-keys-1';
+    const DINO_ASSET_VERSION = '20260823-pacing-fullscreen-1';
     const ui = Object.fromEntries([
       'app','canvas','stage-frame','controls-layer','stick-zone','stick-knob',
-      'safe-probe','launch','start','status','stats'
+      'safe-probe','launch','start','fullscreen','status','stats'
     ].map(id => [id, document.getElementById(id)]));
     let wasmReady = false, started = false, paused = false;
 
@@ -288,17 +299,30 @@
     });
     window.dinoMobileShell = gameShell;
 
+    function syncFullscreenButton() {
+      ui.fullscreen.hidden = !started || gameShell.isFullscreen();
+    }
+
+    ui.fullscreen.addEventListener('click', () => {
+      gameShell.enterImmersiveOnce().then(syncFullscreenButton);
+    });
+    ['fullscreenchange', 'webkitfullscreenchange'].forEach(type => {
+      document.addEventListener(type, syncFullscreenButton, {passive: true});
+    });
+
     ui.start.addEventListener('click', () => {
       if (!wasmReady || started) return;
       // Fullscreen starts from the user's activation. Rejection is an expected
       // browser policy path and never blocks native runtime startup. Device
       // orientation is deliberately not locked.
-      gameShell.enterImmersiveOnce();
+      const fullscreenAttempt = gameShell.enterImmersiveOnce();
       const result = Module.ccall('dino_start', 'number', ['number'], [0]);
       if (result !== 0) return;
       started = true;
       gameShell.setActive(true);
       ui.launch.style.display = 'none';
+      syncFullscreenButton();
+      fullscreenAttempt.then(syncFullscreenButton);
       try { ui.canvas.focus({preventScroll: true}); } catch (_) { ui.canvas.focus(); }
       const smoke = Number(new URLSearchParams(location.search).get('smoke'));
       if (smoke > 0) Module.ccall('dino_run_smoke_frames', null, ['number'], [smoke]);
@@ -326,6 +350,6 @@
       }
     });
   </script>
-  <script src="dino.js?v=20260823-mame-keys-1"></script>
+  <script src="dino.js?v=20260823-pacing-fullscreen-1"></script>
 </body>
 </html>

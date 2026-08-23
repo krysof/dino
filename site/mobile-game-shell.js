@@ -544,6 +544,7 @@
       this.orientationHint = options.orientationHint || null;
       this.active = false;
       this.immersiveRequested = false;
+      this.fullscreenRequest = null;
       this.orientationLockSucceeded = false;
       this.currentRotation = 0;
       this.layoutFrame = 0;
@@ -764,25 +765,48 @@
     }
 
     enterImmersiveOnce() {
-      if (this.immersiveRequested) return;
+      if (this.isFullscreen()) return Promise.resolve(true);
+      if (this.fullscreenRequest) return this.fullscreenRequest;
       this.immersiveRequested = true;
-      const target = document.documentElement;
+      const target = this.app;
       let fullscreenAttempt;
+      let requested = false;
       try {
         if (target.requestFullscreen) {
-          fullscreenAttempt = target.requestFullscreen({navigationUI: 'hide'});
+          // Passing navigationUI options causes avoidable rejection in some
+          // desktop/WebView implementations.  Fullscreen the game root and
+          // let the browser choose its navigation UI policy.
+          fullscreenAttempt = target.requestFullscreen();
+          requested = true;
         } else if (target.webkitRequestFullscreen) {
           fullscreenAttempt = target.webkitRequestFullscreen();
+          requested = true;
         }
       } catch (error) {
         console.info('fullscreen unavailable; continuing with viewport fallback', error);
+        this.scheduleLayout();
+        return Promise.resolve(false);
       }
-      Promise.resolve(fullscreenAttempt).catch(error => {
-        console.info('fullscreen rejected; continuing with viewport fallback', error);
-      }).then(() => {
+      if (!requested) {
+        this.scheduleLayout();
+        return Promise.resolve(false);
+      }
+      this.fullscreenRequest = Promise.resolve(fullscreenAttempt).then(() => {
         if (this.config.orientationLock) this.tryOrientationLock();
         else this.scheduleLayout();
+        this.fullscreenRequest = null;
+        return true;
+      }, error => {
+        console.info('fullscreen rejected; continuing with viewport fallback', error);
+        this.fullscreenRequest = null;
+        this.scheduleLayout();
+        return false;
       });
+      return this.fullscreenRequest;
+    }
+
+    isFullscreen() {
+      return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
     }
 
     tryOrientationLock() {
