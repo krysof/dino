@@ -156,6 +156,10 @@
     }
     #keyboard-help strong { color: #d7ff36; }
     #keyboard-help span[role="row"] { display: contents; }
+    .launch-credit {
+      color: #b8e8ff; font-size: clamp(12px, 1.7vw, 16px);
+      letter-spacing: .02em; text-align: center;
+    }
     @media (pointer: coarse) {
       #keyboard-help { display: none; }
       #fullscreen { display: none !important; }
@@ -209,6 +213,7 @@
     <div id="launch">
       <div class="launch-panel">
         <button id="start" disabled>加载中…</button>
+        <div class="launch-credit">http://www.ff18.com　白河愁</div>
         <div id="keyboard-help" role="table" aria-label="MAME 默认键盘布局">
           <span role="row"><strong>玩家</strong><strong>移动</strong><strong>攻击 / 跳跃</strong><strong>投币</strong><strong>开始</strong></span>
           <span role="row"><b>1P</b><span>方向键</span><span>左 Ctrl / 左 Alt</span><span>5</span><span>1</span></span>
@@ -222,9 +227,9 @@
     <div id="stats"></div>
     <div id="safe-probe" aria-hidden="true"></div>
   </div>
-  <script src="mobile-game-shell.js?v=20260823-localization-warning-audit-1"></script>
+  <script src="mobile-game-shell.js?v=20260823-portrait-signature-1"></script>
   <script>
-    const DINO_ASSET_VERSION = '20260823-localization-warning-audit-1';
+    const DINO_ASSET_VERSION = '20260823-portrait-signature-1';
     const ui = Object.fromEntries([
       'app','canvas','stage-frame','controls-layer','stick-zone','stick-knob',
       'safe-probe','launch','start','fullscreen','status','stats'
@@ -350,6 +355,6 @@
       }
     });
   </script>
-  <script src="dino.js?v=20260823-localization-warning-audit-1"></script>
+  <script src="dino.js?v=20260823-portrait-signature-1"></script>
 </body>
 </html>
