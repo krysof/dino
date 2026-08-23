@@ -235,7 +235,7 @@
           <span role="row"><b>2P</b><span>↑R ↓F ←D →G</span><span>A / S</span><span>6</span><span>2</span></span>
           <span role="row"><b>3P</b><span>↑I ↓K ←J →L</span><span>右 Ctrl / 右 Shift</span><span>7</span><span>3</span></span>
         </div>
-        <div class="pause-help"><strong>P</strong>：暂停 / 继续</div>
+        <div class="pause-help"><strong>P</strong>：暂停 / 继续　<strong>F3</strong>：重新开始</div>
       </div>
     </div>
     <button id="fullscreen" type="button" aria-label="进入全屏" title="进入全屏" hidden>⛶</button>
@@ -243,9 +243,9 @@
     <div id="stats"></div>
     <div id="safe-probe" aria-hidden="true"></div>
   </div>
-  <script src="mobile-game-shell.js?v=20260823-death-x-title16-1"></script>
+  <script src="mobile-game-shell.js?v=20260824-f3-all-enemy-body-1"></script>
   <script>
-    const DINO_ASSET_VERSION = '20260823-death-x-title16-1';
+    const DINO_ASSET_VERSION = '20260824-f3-all-enemy-body-1';
     const ui = Object.fromEntries([
       'app','canvas','stage-frame','controls-layer','stick-zone','stick-knob',
       'safe-probe','launch','start','fullscreen','status','stats','pause-overlay'
@@ -371,13 +371,30 @@
     ]);
     const handleGameKeyDown = event => {
       if (!started) return;
-      if (mameGameCodes.has(event.code) || event.code === 'KeyP') event.preventDefault();
+      if (mameGameCodes.has(event.code) || event.code === 'KeyP' || event.code === 'F3') {
+        event.preventDefault();
+      }
+      if (event.code === 'F3') {
+        if (event.repeat) return;
+        gameShell.releaseAllInputs();
+        manualPaused = false;
+        visibilityPaused = document.hidden;
+        paused = false;
+        ui['pause-overlay'].hidden = true;
+        document.body.dataset.paused = 'false';
+        ui.status.textContent = '';
+        ui.status.style.display = 'none';
+        Module.ccall('dino_reset', null);
+        syncPause();
+        return;
+      }
       if (event.code !== 'KeyP' || event.repeat) return;
       manualPaused = !manualPaused;
       syncPause();
     };
     const handleGameKeyUp = event => {
-      if (started && (mameGameCodes.has(event.code) || event.code === 'KeyP')) {
+      if (started && (mameGameCodes.has(event.code) ||
+          event.code === 'KeyP' || event.code === 'F3')) {
         event.preventDefault();
       }
     };
@@ -390,6 +407,6 @@
       syncPause();
     });
   </script>
-  <script src="dino.js?v=20260823-death-x-title16-1"></script>
+  <script src="dino.js?v=20260824-f3-all-enemy-body-1"></script>
 </body>
 </html>
