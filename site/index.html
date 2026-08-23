@@ -138,6 +138,10 @@
       padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
       background: #000;
     }
+    .launch-panel {
+      display: grid; justify-items: center; gap: 18px;
+      max-width: min(92vw, 760px); padding: 20px;
+    }
     #start {
       appearance: none; border: 2px solid #d7ff36; border-radius: 5px;
       background: #b9f227; color: #10160d; padding: 14px 32px;
@@ -145,6 +149,16 @@
       touch-action: manipulation; user-select: none;
     }
     #start:disabled { opacity: .45; }
+    #keyboard-help {
+      display: grid; grid-template-columns: auto auto auto auto auto; gap: 7px 18px;
+      color: #d6d6d6; font-size: clamp(12px, 1.45vw, 15px); line-height: 1.35;
+      text-align: left;
+    }
+    #keyboard-help strong { color: #d7ff36; }
+    #keyboard-help span[role="row"] { display: contents; }
+    @media (pointer: coarse) {
+      #keyboard-help { display: none; }
+    }
     #status {
       position: absolute; left: 50%; top: 50%; z-index: 24; display: none;
       max-width: min(90vw, 640px); transform: translate(-50%, -50%);
@@ -182,14 +196,24 @@
         <button class="control-button utility" data-port="0" data-input="3" aria-label="开始">开始</button>
       </div>
     </div>
-    <div id="launch"><button id="start" disabled>加载中…</button></div>
+    <div id="launch">
+      <div class="launch-panel">
+        <button id="start" disabled>加载中…</button>
+        <div id="keyboard-help" role="table" aria-label="MAME 默认键盘布局">
+          <span role="row"><strong>玩家</strong><strong>移动</strong><strong>攻击 / 跳跃</strong><strong>投币</strong><strong>开始</strong></span>
+          <span role="row"><b>1P</b><span>方向键</span><span>左 Ctrl / 左 Alt</span><span>5</span><span>1</span></span>
+          <span role="row"><b>2P</b><span>↑R ↓F ←D →G</span><span>A / S</span><span>6</span><span>2</span></span>
+          <span role="row"><b>3P</b><span>↑I ↓K ←J →L</span><span>右 Ctrl / 右 Shift</span><span>7</span><span>3</span></span>
+        </div>
+      </div>
+    </div>
     <div id="status" role="alert"></div>
     <div id="stats"></div>
     <div id="safe-probe" aria-hidden="true"></div>
   </div>
-  <script src="mobile-game-shell.js?v=20260823-zh-cn-2"></script>
+  <script src="mobile-game-shell.js?v=20260823-mame-keys-1"></script>
   <script>
-    const DINO_ASSET_VERSION = '20260823-zh-cn-2';
+    const DINO_ASSET_VERSION = '20260823-mame-keys-1';
     const ui = Object.fromEntries([
       'app','canvas','stage-frame','controls-layer','stick-zone','stick-knob',
       'safe-probe','launch','start','status','stats'
@@ -280,11 +304,17 @@
       if (smoke > 0) Module.ccall('dino_run_smoke_frames', null, ['number'], [smoke]);
     });
 
-    window.addEventListener('keydown', event => {
-      if (started && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(event.key)) {
-        event.preventDefault();
-      }
-    }, {passive: false});
+    const mameGameCodes = new Set([
+      'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+      'ControlLeft', 'AltLeft', 'Digit1', 'Digit5',
+      'KeyR', 'KeyF', 'KeyD', 'KeyG', 'KeyA', 'KeyS', 'Digit2', 'Digit6',
+      'KeyI', 'KeyK', 'KeyJ', 'KeyL', 'ControlRight', 'ShiftRight', 'Digit3', 'Digit7'
+    ]);
+    const suppressGameKeyDefault = event => {
+      if (started && mameGameCodes.has(event.code)) event.preventDefault();
+    };
+    window.addEventListener('keydown', suppressGameKeyDefault, {passive: false});
+    window.addEventListener('keyup', suppressGameKeyDefault, {passive: false});
 
     document.addEventListener('visibilitychange', () => {
       if (!started) return;
@@ -296,6 +326,6 @@
       }
     });
   </script>
-  <script src="dino.js?v=20260823-zh-cn-2"></script>
+  <script src="dino.js?v=20260823-mame-keys-1"></script>
 </body>
 </html>
