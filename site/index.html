@@ -2,90 +2,215 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" href="data:,">
   <title>Dino</title>
   <style>
-    * { box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #000; }
-    body { color: #fff; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    #game { position: fixed; inset: 0; display: grid; place-items: center; background: #000; }
-    canvas {
-      width: 100vw; height: 100vh; display: block; background: #000;
-      image-rendering: pixelated; outline: none;
+    :root {
+      --viewport-left: 0px;
+      --viewport-top: 0px;
+      --viewport-width: 100vw;
+      --viewport-height: 100vh;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --stick-x: 0px;
+      --stick-y: 0px;
     }
+    * { box-sizing: border-box; }
+    html, body {
+      width: 100%; min-height: 100%; margin: 0; overflow: hidden;
+      background: #000; overscroll-behavior: none;
+    }
+    body {
+      min-height: 100vh;
+      color: #fff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    @supports (height: 100dvh) {
+      body { min-height: 100dvh; }
+      :root { --viewport-width: 100dvw; --viewport-height: 100dvh; }
+    }
+    #app {
+      position: fixed;
+      left: var(--viewport-left); top: var(--viewport-top);
+      width: var(--viewport-width); height: var(--viewport-height);
+      overflow: hidden; background: #000;
+      touch-action: none;
+    }
+    #backdrop, #game-layer, #controls-layer, #launch {
+      position: absolute; inset: 0;
+    }
+    #backdrop { background: #000; pointer-events: none; }
+    #game-layer { z-index: 2; pointer-events: none; }
+    #stage-frame {
+      position: absolute;
+      left: 50%; top: 50%; width: 384px; height: 224px;
+      transform: translate(-50%, -50%);
+      transform-origin: center center;
+      overflow: hidden; background: #000;
+      contain: layout paint size;
+    }
+    #canvas {
+      width: 100% !important; height: 100% !important;
+      display: block; margin: 0; border: 0; background: #000;
+      image-rendering: pixelated; image-rendering: crisp-edges;
+      outline: none; object-fit: contain;
+    }
+    #controls-layer {
+      z-index: 8; display: none; pointer-events: none;
+      padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+    }
+    #controls-layer.active { display: block; }
+    #controls-layer, #controls-layer * {
+      touch-action: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    #stick-zone {
+      position: absolute;
+      left: max(12px, var(--safe-left));
+      bottom: max(12px, var(--safe-bottom));
+      width: clamp(96px, 20vmin, 132px);
+      height: clamp(96px, 20vmin, 132px);
+      border-radius: 50%;
+      pointer-events: auto;
+    }
+    .stick-base {
+      position: absolute; inset: 0; border-radius: 50%;
+      border: 2px solid #ffffff52;
+      background: radial-gradient(circle, #ffffff19 0 48%, #00000055 49% 100%);
+      box-shadow: inset 0 0 0 8px #ffffff0b, 0 2px 16px #000a;
+    }
+    .stick-cross::before, .stick-cross::after {
+      content: ""; position: absolute; left: 50%; top: 50%;
+      background: #ffffff24; transform: translate(-50%, -50%);
+    }
+    .stick-cross::before { width: 72%; height: 1px; }
+    .stick-cross::after { width: 1px; height: 72%; }
+    #stick-knob {
+      position: absolute; left: 50%; top: 50%; width: 44%; height: 44%;
+      border: 2px solid #ffffffaa; border-radius: 50%;
+      background: #b9f227bb;
+      box-shadow: 0 2px 8px #000b;
+      transform: translate(-50%, -50%) translate(var(--stick-x), var(--stick-y));
+      will-change: transform; pointer-events: none;
+    }
+    #actions {
+      position: absolute;
+      right: max(12px, var(--safe-right));
+      bottom: max(12px, var(--safe-bottom));
+      display: grid; grid-template-columns: repeat(2, clamp(50px, 10vmin, 66px));
+      grid-template-rows: repeat(2, clamp(48px, 9vmin, 60px));
+      gap: clamp(6px, 1.5vmin, 10px);
+      pointer-events: none;
+    }
+    .control-button {
+      appearance: none; min-width: 0; padding: 0;
+      border: 2px solid #ffffff66; border-radius: 50%;
+      background: #00000078; color: #fff;
+      font: 700 clamp(12px, 2.4vmin, 16px)/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      text-shadow: 0 1px 2px #000;
+      box-shadow: 0 2px 10px #0009;
+      backdrop-filter: blur(3px);
+      pointer-events: auto;
+    }
+    .control-button.primary { border-color: #d7ff3699; background: #668b18a8; }
+    .control-button.utility { border-radius: 12px; font-size: clamp(10px, 2vmin, 13px); }
+    .control-button.pressed, .control-button:active {
+      transform: translateY(1px) scale(.96);
+      filter: brightness(1.35);
+    }
+    #controls-layer[data-layout="portrait"] #stick-zone,
+    #controls-layer[data-layout="portrait"] #actions {
+      bottom: max(14px, var(--safe-bottom));
+    }
+    #orientation-hint {
+      position: absolute; z-index: 12;
+      left: 50%; top: max(10px, var(--safe-top));
+      max-width: calc(100% - var(--safe-left) - var(--safe-right) - 24px);
+      transform: translateX(-50%);
+      padding: 7px 12px; border: 1px solid #ffffff44; border-radius: 7px;
+      background: #000c; color: #fff;
+      font-size: 12px; text-align: center; pointer-events: none;
+    }
+    #orientation-hint[hidden] { display: none; }
     #launch {
-      position: absolute; inset: 0; z-index: 10; display: grid; place-items: center;
+      z-index: 20; display: grid; place-items: center;
+      padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
       background: #000;
     }
-    button {
-      appearance: none; border: 2px solid #d7ff36; border-radius: 4px;
+    #start {
+      appearance: none; border: 2px solid #d7ff36; border-radius: 5px;
       background: #b9f227; color: #10160d; padding: 14px 32px;
       font: 700 18px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      touch-action: none; user-select: none;
+      touch-action: manipulation; user-select: none;
     }
-    button:disabled { opacity: .45; }
+    #start:disabled { opacity: .45; }
     #status {
-      position: absolute; left: 50%; top: 50%; z-index: 12; display: none;
+      position: absolute; left: 50%; top: 50%; z-index: 24; display: none;
       max-width: min(90vw, 640px); transform: translate(-50%, -50%);
-      padding: 16px 20px; border: 1px solid #ff665f; background: #170605e8;
+      padding: 16px 20px; border: 1px solid #ff665f; background: #170605ee;
       color: #ffaaa4; text-align: center;
     }
-    #touch { display: none; }
     #stats { display: none; }
-    @media (pointer: coarse) {
-      #touch.active {
-        position: absolute; inset: auto 0 max(12px, env(safe-area-inset-bottom)); z-index: 8;
-        display: flex; align-items: end; justify-content: space-between;
-        padding: 0 max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left));
-        pointer-events: none;
-      }
-      #touch button {
-        width: 58px; min-width: 58px; height: 52px; padding: 0;
-        border-color: #ffffff55; background: #00000066; color: #fff;
-        backdrop-filter: blur(3px); pointer-events: auto;
-      }
-      .dpad { display: grid; grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(2, 52px); gap: 5px; }
-      .dpad [data-id="4"] { grid-column: 2; }
-      .dpad [data-id="6"] { grid-column: 1; grid-row: 2; }
-      .dpad [data-id="5"] { grid-column: 2; grid-row: 2; }
-      .dpad [data-id="7"] { grid-column: 3; grid-row: 2; }
-      .actions { display: grid; grid-template-columns: repeat(2, 62px); gap: 7px; }
-      .actions button { width: 62px; min-width: 62px; }
-      .actions .wide { grid-column: span 2; width: 131px; }
+    #safe-probe {
+      position: fixed; inset: 0; visibility: hidden; pointer-events: none;
+      padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+        env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #stick-knob, .control-button { transition: none; }
     }
   </style>
 </head>
 <body>
-  <div id="game">
-    <canvas id="canvas" width="768" height="576" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
-    <div id="launch"><button id="start" disabled>加载中…</button></div>
-    <div id="status" role="alert"></div>
-    <div id="touch" aria-label="触摸控制">
-      <div class="dpad">
-        <button data-port="0" data-id="4">▲</button>
-        <button data-port="0" data-id="6">◀</button>
-        <button data-port="0" data-id="5">▼</button>
-        <button data-port="0" data-id="7">▶</button>
-      </div>
-      <div class="actions">
-        <button data-port="0" data-id="1">攻击</button>
-        <button data-port="0" data-id="0">跳跃</button>
-        <button data-port="0" data-id="2">投币</button>
-        <button data-port="0" data-id="3">开始</button>
+  <div id="app">
+    <div id="backdrop"></div>
+    <div id="game-layer">
+      <div id="stage-frame" data-rotation="0" data-layout="normal">
+        <canvas id="canvas" width="384" height="224" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
       </div>
     </div>
+    <div id="controls-layer" aria-label="触摸控制" aria-hidden="true" data-layout="landscape">
+      <div id="stick-zone" role="application" aria-label="八方向虚拟摇杆">
+        <div class="stick-base stick-cross"></div>
+        <div id="stick-knob"></div>
+      </div>
+      <div id="actions">
+        <button class="control-button primary" data-port="0" data-input="1" aria-label="攻击或确认">攻击</button>
+        <button class="control-button" data-port="0" data-input="0" aria-label="跳跃或取消">跳跃</button>
+        <button class="control-button utility" data-port="0" data-input="2" aria-label="投币">投币</button>
+        <button class="control-button utility" data-port="0" data-input="3" aria-label="开始">开始</button>
+      </div>
+    </div>
+    <div id="orientation-hint" role="status" hidden>横屏锁定不可用，已启用可操作的旋转布局</div>
+    <div id="launch"><button id="start" disabled>加载中…</button></div>
+    <div id="status" role="alert"></div>
     <div id="stats"></div>
+    <div id="safe-probe" aria-hidden="true"></div>
   </div>
+  <script src="mobile-game-shell.js"></script>
   <script>
-    const ui = Object.fromEntries(['canvas','launch','start','status','touch','stats'].map(id => [id, document.getElementById(id)]));
+    const ui = Object.fromEntries([
+      'app','canvas','stage-frame','controls-layer','stick-zone','stick-knob',
+      'orientation-hint','safe-probe','launch','start','status','stats'
+    ].map(id => [id, document.getElementById(id)]));
     let wasmReady = false, started = false, paused = false;
+
     function setStatus(message, error = false) {
       if (!error) return;
       ui.status.textContent = message;
       ui.status.style.display = 'block';
     }
+
     var Module = {
       canvas: ui.canvas,
       print: text => console.log(text),
@@ -95,7 +220,9 @@
         wasmReady = true;
         ui.start.disabled = false;
         ui.start.textContent = '开始';
-        if (new URLSearchParams(location.search).has('autostart')) setTimeout(() => ui.start.click(), 0);
+        if (new URLSearchParams(location.search).has('autostart')) {
+          setTimeout(() => ui.start.click(), 0);
+        }
       },
       onDinoStatus: setStatus,
       onDinoStats(s) {
@@ -105,33 +232,58 @@
         document.body.dataset.qsoundWrites = s.audioWrites;
       }
     };
+
+    const gameShell = new MobileGameShell({
+      app: ui.app,
+      stage: ui['stage-frame'],
+      canvas: ui.canvas,
+      controls: ui['controls-layer'],
+      stick: ui['stick-zone'],
+      knob: ui['stick-knob'],
+      safeProbe: ui['safe-probe'],
+      orientationHint: ui['orientation-hint'],
+      config: {
+        logicalWidth: 384,
+        logicalHeight: 224,
+        orientationLock: 'landscape',
+        rotatePortraitFallback: true,
+        portraitRotation: 90,
+        controls: {directions: 8, deadZone: 0.22, sensitivity: 1, minimumPressMs: 34}
+      },
+      onInput(port, id, pressed) {
+        if (started) Module.ccall(
+          'dino_set_button', null,
+          ['number','number','number'],
+          [port, id, pressed ? 1 : 0]
+        );
+      }
+    });
+    window.dinoMobileShell = gameShell;
+
     ui.start.addEventListener('click', () => {
       if (!wasmReady || started) return;
+      // Both calls begin from the user's activation. Rejection is an expected
+      // browser policy path and never blocks native runtime startup.
+      gameShell.enterImmersiveOnce();
       const result = Module.ccall('dino_start', 'number', ['number'], [0]);
       if (result !== 0) return;
       started = true;
+      gameShell.setActive(true);
       ui.launch.style.display = 'none';
-      ui.touch.classList.add('active');
-      ui.canvas.focus();
-      const smoke = +new URLSearchParams(location.search).get('smoke');
+      try { ui.canvas.focus({preventScroll: true}); } catch (_) { ui.canvas.focus(); }
+      const smoke = Number(new URLSearchParams(location.search).get('smoke'));
       if (smoke > 0) Module.ccall('dino_run_smoke_frames', null, ['number'], [smoke]);
     });
-    document.querySelectorAll('[data-port][data-id]').forEach(button => {
-      const send = pressed => {
-        if (started) Module.ccall('dino_set_button', null, ['number','number','number'], [+button.dataset.port,+button.dataset.id,pressed]);
-      };
-      button.addEventListener('pointerdown', event => {
-        event.preventDefault(); button.setPointerCapture(event.pointerId); send(1);
-      });
-      ['pointerup','pointercancel','lostpointercapture'].forEach(name => button.addEventListener(name, event => {
-        event.preventDefault(); send(0);
-      }));
-    });
+
     window.addEventListener('keydown', event => {
-      if (started && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(event.key)) event.preventDefault();
-    }, {passive:false});
+      if (started && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(event.key)) {
+        event.preventDefault();
+      }
+    }, {passive: false});
+
     document.addEventListener('visibilitychange', () => {
       if (!started) return;
+      if (document.hidden) gameShell.releaseAllInputs();
       const nextPaused = document.hidden;
       if (nextPaused !== paused) {
         paused = nextPaused;
