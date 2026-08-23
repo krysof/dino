@@ -132,16 +132,6 @@
     #controls-layer[data-layout="portrait"] #actions {
       bottom: max(14px, var(--safe-bottom));
     }
-    #orientation-hint {
-      position: absolute; z-index: 12;
-      left: 50%; top: max(10px, var(--safe-top));
-      max-width: calc(100% - var(--safe-left) - var(--safe-right) - 24px);
-      transform: translateX(-50%);
-      padding: 7px 12px; border: 1px solid #ffffff44; border-radius: 7px;
-      background: #000c; color: #fff;
-      font-size: 12px; text-align: center; pointer-events: none;
-    }
-    #orientation-hint[hidden] { display: none; }
     #launch {
       z-index: 20; display: grid; place-items: center;
       padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
@@ -191,7 +181,6 @@
         <button class="control-button utility" data-port="0" data-input="3" aria-label="开始">开始</button>
       </div>
     </div>
-    <div id="orientation-hint" role="status" hidden>横屏锁定不可用，已启用可操作的旋转布局</div>
     <div id="launch"><button id="start" disabled>加载中…</button></div>
     <div id="status" role="alert"></div>
     <div id="stats"></div>
@@ -201,7 +190,7 @@
   <script>
     const ui = Object.fromEntries([
       'app','canvas','stage-frame','controls-layer','stick-zone','stick-knob',
-      'orientation-hint','safe-probe','launch','start','status','stats'
+      'safe-probe','launch','start','status','stats'
     ].map(id => [id, document.getElementById(id)]));
     let wasmReady = false, started = false, paused = false;
 
@@ -241,13 +230,11 @@
       stick: ui['stick-zone'],
       knob: ui['stick-knob'],
       safeProbe: ui['safe-probe'],
-      orientationHint: ui['orientation-hint'],
       config: {
         logicalWidth: 384,
         logicalHeight: 224,
-        orientationLock: 'landscape',
-        rotatePortraitFallback: true,
-        portraitRotation: 90,
+        orientationLock: null,
+        rotatePortraitFallback: false,
         controls: {directions: 8, deadZone: 0.22, sensitivity: 1, minimumPressMs: 34}
       },
       onInput(port, id, pressed) {
@@ -262,8 +249,9 @@
 
     ui.start.addEventListener('click', () => {
       if (!wasmReady || started) return;
-      // Both calls begin from the user's activation. Rejection is an expected
-      // browser policy path and never blocks native runtime startup.
+      // Fullscreen starts from the user's activation. Rejection is an expected
+      // browser policy path and never blocks native runtime startup. Device
+      // orientation is deliberately not locked.
       gameShell.enterImmersiveOnce();
       const result = Module.ccall('dino_start', 'number', ['number'], [0]);
       if (result !== 0) return;

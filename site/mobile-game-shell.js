@@ -4,9 +4,9 @@
   const DEFAULTS = Object.freeze({
     logicalWidth: 384,
     logicalHeight: 224,
-    rotatePortraitFallback: true,
+    rotatePortraitFallback: false,
     portraitRotation: 90,
-    orientationLock: 'landscape',
+    orientationLock: null,
     orientationHintMs: 3600,
     layout: Object.freeze({
       margin: 12,
@@ -564,10 +564,10 @@
       const contentWidth = Math.max(1, viewport.width - safe.left - safe.right);
       const contentHeight = Math.max(1, viewport.height - safe.top - safe.bottom);
       const aspect = this.config.logicalWidth / this.config.logicalHeight;
-      const portraitFallback = Boolean(
-        this.active && this.touchCapable && this.config.rotatePortraitFallback &&
-        viewport.height > viewport.width
+      const portrait = Boolean(
+        this.active && this.touchCapable && viewport.height > viewport.width
       );
+      const portraitFallback = portrait && this.config.rotatePortraitFallback;
 
       this.app.style.setProperty('--viewport-left', `${viewport.left}px`);
       this.app.style.setProperty('--viewport-top', `${viewport.top}px`);
@@ -602,6 +602,20 @@
         stageY = safe.top + availableHeight / 2;
         this.currentRotation = this.config.portraitRotation;
         this.controlsRoot.dataset.layout = 'portrait';
+      } else if (portrait) {
+        const controlBand = clamp(
+          contentHeight * this.config.layout.portraitControlBandRatio,
+          this.config.layout.portraitControlBandMin,
+          this.config.layout.portraitControlBandMax
+        );
+        const availableWidth = Math.max(1, contentWidth - margin * 2);
+        const availableHeight = Math.max(1, contentHeight - controlBand - margin * 2);
+        stageWidth = Math.min(availableWidth, availableHeight * aspect);
+        stageHeight = stageWidth / aspect;
+        stageX = safe.left + contentWidth / 2;
+        stageY = safe.top + availableHeight / 2 + margin;
+        this.currentRotation = 0;
+        this.controlsRoot.dataset.layout = 'portrait';
       } else {
         let gutter = 0;
         if (this.active && this.touchCapable) {
@@ -629,7 +643,9 @@
       this.stage.style.transform =
         `translate(-50%, -50%) rotate(${this.currentRotation}deg)`;
       this.stage.dataset.rotation = String(this.currentRotation);
-      this.stage.dataset.layout = portraitFallback ? 'portrait-fallback' : 'normal';
+      this.stage.dataset.layout = portraitFallback
+        ? 'portrait-fallback'
+        : (portrait ? 'portrait-contain' : 'normal');
 
       if (portraitFallback && !this.lastPortraitFallback) this.showOrientationHint();
       if (!portraitFallback && this.orientationHint) this.orientationHint.hidden = true;
@@ -661,10 +677,14 @@
       }
       Promise.resolve(fullscreenAttempt).catch(error => {
         console.info('fullscreen rejected; continuing with viewport fallback', error);
-      }).then(() => this.tryOrientationLock());
+      }).then(() => {
+        if (this.config.orientationLock) this.tryOrientationLock();
+        else this.scheduleLayout();
+      });
     }
 
     tryOrientationLock() {
+      if (!this.config.orientationLock) return;
       try {
         const orientation = global.screen && global.screen.orientation;
         if (!orientation || typeof orientation.lock !== 'function') return;
