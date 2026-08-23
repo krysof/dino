@@ -478,14 +478,21 @@
       const magnitude = Math.min(1, rawMagnitude);
       const visualMagnitude = Math.pow(magnitude, this.config.sensitivity);
       const normalizer = magnitude > 0 ? visualMagnitude / magnitude : 0;
-      this.root.style.setProperty('--stick-x', `${screenX * normalizer * radius}px`);
-      this.root.style.setProperty('--stick-y', `${screenY * normalizer * radius}px`);
-
       if (magnitude < this.config.deadZone) {
+        this.root.style.setProperty('--stick-x', '0px');
+        this.root.style.setProperty('--stick-y', '0px');
         this.inputHub.setSource(source, [], true);
         return;
       }
       const gameVector = this.screenToGameVector(screenX, screenY);
+      // The knob lives inside the same rotated layer as the stage. Move it in
+      // local/game axes so its transformed screen position follows the finger.
+      this.root.style.setProperty(
+        '--stick-x', `${gameVector.x * normalizer * radius}px`
+      );
+      this.root.style.setProperty(
+        '--stick-y', `${gameVector.y * normalizer * radius}px`
+      );
       const buttons = this.directionButtons(gameVector.x, gameVector.y);
       // Direction changes release the old axis immediately. Pointer-up uses
       // the minimum pulse latch so a very fast tap still reaches one frame.
@@ -677,7 +684,22 @@
         this.config.controls.actionSizeMin,
         this.config.controls.actionSizeMax
       );
-      if (portrait) {
+      if (portraitFallback) {
+        // Portrait fallback rotates the complete touch surface into a virtual
+        // landscape viewport. Fit both clusters against those virtual axes,
+        // including unusually narrow split-screen and embedded WebViews.
+        const virtualWidthBudget = Math.max(1, contentHeight - margin * 3);
+        const virtualHeightBudget = Math.max(1, contentWidth - margin * 2);
+        const actionCluster = actionSize * 2 + actionGap;
+        const scale = Math.min(
+          1,
+          virtualWidthBudget / Math.max(1, stickSize + actionCluster),
+          virtualHeightBudget / Math.max(1, stickSize, actionCluster)
+        );
+        stickSize *= scale;
+        actionSize *= scale;
+        actionGap *= scale;
+      } else if (portrait) {
         // Keep both control clusters usable on narrow viewports. Normal phones
         // receive the preferred enlarged sizes; only genuinely narrow viewports
         // scale them down, without any model- or resolution-specific branch.
@@ -730,22 +752,21 @@
         this.currentRotation = 0;
         this.controlsRoot.dataset.layout = 'landscape';
       } else if (portraitFallback) {
-        const controlBand = this.touchCapable ? Math.max(
-          stickSize + margin * 2,
-          clamp(
-            contentHeight * this.config.layout.portraitControlBandRatio,
-            this.config.layout.portraitControlBandMin,
-            this.config.layout.portraitControlBandMax
-          )
-        ) : 0;
-        const availableHeight = Math.max(1, contentHeight - controlBand - margin);
-        // The unrotated logical width becomes the displayed bounding height.
-        stageWidth = Math.min(availableHeight, contentWidth * aspect);
+        // Lay out a virtual landscape surface whose axes are the portrait
+        // viewport's swapped axes, then rotate both the stage and controls.
+        // The 384x224 logic space and runtime remain completely unchanged.
+        const actionCluster = actionSize * 2 + actionGap;
+        const gutter = Math.max(stickSize, actionCluster) + margin;
+        const virtualWidth = contentHeight;
+        const virtualHeight = contentWidth;
+        const availableWidth = Math.max(1, virtualWidth - gutter * 2 - margin * 2);
+        const availableHeight = Math.max(1, virtualHeight - margin * 2);
+        stageWidth = Math.min(availableWidth, availableHeight * aspect);
         stageHeight = stageWidth / aspect;
         stageX = safe.left + contentWidth / 2;
-        stageY = safe.top + availableHeight / 2;
+        stageY = safe.top + contentHeight / 2;
         this.currentRotation = this.config.portraitRotation;
-        this.controlsRoot.dataset.layout = 'portrait';
+        this.controlsRoot.dataset.layout = 'portrait-rotated';
       } else if (portrait) {
         const controlBand = Math.max(
           stickSize + margin * 2,
@@ -796,6 +817,21 @@
       this.stage.dataset.layout = portraitFallback
         ? 'portrait-fallback'
         : (portrait ? 'portrait-contain' : 'normal');
+
+      if (portraitFallback) {
+        this.controlsRoot.style.left = `${safe.left + contentWidth / 2}px`;
+        this.controlsRoot.style.top = `${safe.top + contentHeight / 2}px`;
+        this.controlsRoot.style.width = `${contentHeight}px`;
+        this.controlsRoot.style.height = `${contentWidth}px`;
+        this.controlsRoot.style.transform =
+          `translate(-50%, -50%) rotate(${this.currentRotation}deg)`;
+      } else {
+        this.controlsRoot.style.removeProperty('left');
+        this.controlsRoot.style.removeProperty('top');
+        this.controlsRoot.style.removeProperty('width');
+        this.controlsRoot.style.removeProperty('height');
+        this.controlsRoot.style.removeProperty('transform');
+      }
 
       if (portraitFallback && !this.lastPortraitFallback) this.showOrientationHint();
       if (!portraitFallback && this.orientationHint) this.orientationHint.hidden = true;

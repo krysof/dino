@@ -80,6 +80,11 @@
       padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
     }
     #controls-layer.active { display: block; }
+    #controls-layer[data-layout="portrait-rotated"] {
+      inset: auto;
+      padding: 0;
+      transform-origin: center center;
+    }
     #controls-layer, #controls-layer * {
       touch-action: none;
       -webkit-touch-callout: none;
@@ -144,9 +149,13 @@
       transform: translateY(1px) scale(.96);
       filter: brightness(1.35);
     }
-    #controls-layer[data-layout="portrait"] #stick-zone,
-    #controls-layer[data-layout="portrait"] #actions {
-      bottom: max(14px, var(--safe-bottom));
+    #controls-layer[data-layout="portrait-rotated"] #stick-zone {
+      left: 12px;
+      bottom: 12px;
+    }
+    #controls-layer[data-layout="portrait-rotated"] #actions {
+      right: 12px;
+      bottom: 12px;
     }
     #launch {
       z-index: 20; display: grid; place-items: center;
@@ -249,9 +258,9 @@
     <div id="stats"></div>
     <div id="safe-probe" aria-hidden="true"></div>
   </div>
-  <script src="mobile-game-shell.js?v=20260824-large-touch-controls-1"></script>
+  <script src="mobile-game-shell.js?v=20260824-portrait-rotated-controls-1"></script>
   <script>
-    const DINO_ASSET_VERSION = '20260824-large-touch-controls-1';
+    const DINO_ASSET_VERSION = '20260824-portrait-rotated-controls-1';
     const ui = Object.fromEntries([
       'app','canvas','stage-frame','controls-layer','stick-zone','stick-knob',
       'safe-probe','launch','start','fullscreen','status','stats','pause-overlay'
@@ -314,7 +323,7 @@
         logicalWidth: 384,
         logicalHeight: 224,
         orientationLock: null,
-        rotatePortraitFallback: false,
+        rotatePortraitFallback: true,
         controls: {
           directions: 8,
           deadZone: 0.22,
@@ -419,6 +428,6 @@
       syncPause();
     });
   </script>
-  <script src="dino.js?v=20260824-large-touch-controls-1"></script>
+  <script src="dino.js?v=20260824-portrait-rotated-controls-1"></script>
 </body>
 </html>
