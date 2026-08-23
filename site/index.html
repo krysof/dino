@@ -64,6 +64,15 @@
       image-rendering: pixelated; image-rendering: crisp-edges;
       outline: none; object-fit: contain;
     }
+    #pause-overlay {
+      position: absolute; inset: 0; z-index: 3;
+      display: grid; place-content: center; gap: 8px;
+      background: #0009; color: #fff; text-align: center;
+      font: 700 24px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      pointer-events: none;
+    }
+    #pause-overlay small { color: #d7ff36; font-size: 14px; }
+    #pause-overlay[hidden] { display: none; }
     #controls-layer {
       z-index: 8; display: none; pointer-events: none;
       padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
@@ -156,12 +165,15 @@
     }
     #keyboard-help strong { color: #d7ff36; }
     #keyboard-help span[role="row"] { display: contents; }
+    .pause-help { color: #d6d6d6; font-size: 14px; }
+    .pause-help strong { color: #d7ff36; }
     .launch-credit {
       color: #b8e8ff; font-size: clamp(12px, 1.7vw, 16px);
       letter-spacing: .02em; text-align: center;
     }
     @media (pointer: coarse) {
       #keyboard-help { display: none; }
+      .pause-help { display: none; }
       #fullscreen { display: none !important; }
     }
     #fullscreen {
@@ -196,6 +208,9 @@
     <div id="game-layer">
       <div id="stage-frame" data-rotation="0" data-layout="normal">
         <canvas id="canvas" width="384" height="224" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+        <div id="pause-overlay" role="status" aria-live="polite" hidden>
+          <span>已暂停</span><small>按 P 继续</small>
+        </div>
       </div>
     </div>
     <div id="controls-layer" aria-label="触摸控制" aria-hidden="true" data-layout="landscape">
@@ -220,6 +235,7 @@
           <span role="row"><b>2P</b><span>↑R ↓F ←D →G</span><span>A / S</span><span>6</span><span>2</span></span>
           <span role="row"><b>3P</b><span>↑I ↓K ←J →L</span><span>右 Ctrl / 右 Shift</span><span>7</span><span>3</span></span>
         </div>
+        <div class="pause-help"><strong>P</strong>：暂停 / 继续</div>
       </div>
     </div>
     <button id="fullscreen" type="button" aria-label="进入全屏" title="进入全屏" hidden>⛶</button>
@@ -227,14 +243,27 @@
     <div id="stats"></div>
     <div id="safe-probe" aria-hidden="true"></div>
   </div>
-  <script src="mobile-game-shell.js?v=20260823-portrait-signature-1"></script>
+  <script src="mobile-game-shell.js?v=20260823-pause-hud-labels-1"></script>
   <script>
-    const DINO_ASSET_VERSION = '20260823-portrait-signature-1';
+    const DINO_ASSET_VERSION = '20260823-pause-hud-labels-1';
     const ui = Object.fromEntries([
       'app','canvas','stage-frame','controls-layer','stick-zone','stick-knob',
-      'safe-probe','launch','start','fullscreen','status','stats'
+      'safe-probe','launch','start','fullscreen','status','stats','pause-overlay'
     ].map(id => [id, document.getElementById(id)]));
-    let wasmReady = false, started = false, paused = false;
+    let wasmReady = false, started = false;
+    let manualPaused = false, visibilityPaused = false, paused = false;
+
+    function syncPause() {
+      const nextPaused = manualPaused || visibilityPaused;
+      if (nextPaused === paused) return;
+      paused = nextPaused;
+      if (paused) gameShell.releaseAllInputs();
+      ui['pause-overlay'].hidden = !paused;
+      document.body.dataset.paused = paused ? 'true' : 'false';
+      if (started) {
+        Module.ccall('dino_set_paused', null, ['number'], [paused ? 1 : 0]);
+      }
+    }
 
     function setStatus(message, error = false) {
       if (!error) return;
@@ -324,6 +353,7 @@
       const result = Module.ccall('dino_start', 'number', ['number'], [0]);
       if (result !== 0) return;
       started = true;
+      document.body.dataset.paused = 'false';
       gameShell.setActive(true);
       ui.launch.style.display = 'none';
       syncFullscreenButton();
@@ -339,22 +369,27 @@
       'KeyR', 'KeyF', 'KeyD', 'KeyG', 'KeyA', 'KeyS', 'Digit2', 'Digit6',
       'KeyI', 'KeyK', 'KeyJ', 'KeyL', 'ControlRight', 'ShiftRight', 'Digit3', 'Digit7'
     ]);
-    const suppressGameKeyDefault = event => {
-      if (started && mameGameCodes.has(event.code)) event.preventDefault();
+    const handleGameKeyDown = event => {
+      if (!started) return;
+      if (mameGameCodes.has(event.code) || event.code === 'KeyP') event.preventDefault();
+      if (event.code !== 'KeyP' || event.repeat) return;
+      manualPaused = !manualPaused;
+      syncPause();
     };
-    window.addEventListener('keydown', suppressGameKeyDefault, {passive: false});
-    window.addEventListener('keyup', suppressGameKeyDefault, {passive: false});
+    const handleGameKeyUp = event => {
+      if (started && (mameGameCodes.has(event.code) || event.code === 'KeyP')) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', handleGameKeyDown, {passive: false});
+    window.addEventListener('keyup', handleGameKeyUp, {passive: false});
 
     document.addEventListener('visibilitychange', () => {
       if (!started) return;
-      if (document.hidden) gameShell.releaseAllInputs();
-      const nextPaused = document.hidden;
-      if (nextPaused !== paused) {
-        paused = nextPaused;
-        Module.ccall('dino_set_paused', null, ['number'], [paused ? 1 : 0]);
-      }
+      visibilityPaused = document.hidden;
+      syncPause();
     });
   </script>
-  <script src="dino.js?v=20260823-portrait-signature-1"></script>
+  <script src="dino.js?v=20260823-pause-hud-labels-1"></script>
 </body>
 </html>
