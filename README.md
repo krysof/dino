@@ -16,12 +16,19 @@
 边界是 Z80/QSound 音频。构建审计拒绝 C/C++、汇编、Python 源文件、ROM 压缩包以及
 libretro/CPS 执行核心符号；已验证主程序可执行 C++ 覆盖率为 100%。
 
+当前发行版已包含第一批简体中文汉化：投币/开始、币数、选人时间、加入游戏、人物能力
+提示、第一关地点和开场对白。中文字形已经转换成 1 bpp 二进制数组并封装在
+`dino.data` 中，浏览器不依赖系统字体。
+
 ## 声音第三方代码
 
 声音模块使用未修改的 FB Alpha Z80 core：
 
 - [固定上游提交中的 Z80 源码](https://github.com/libretro/fbalpha2012_cps1/tree/5542c1848ef81e92db311193b01dc349bc29d7cc/src/cpu/z80)
 - [本发行版附带的完整许可](site/sound-core-license.txt)
+
+简体中文字形来自 Noto Sans CJK SC，许可见
+[`site/zh-font-license.txt`](site/zh-font-license.txt)。
 
 游戏名称、程序、图形与声音归各自权利人所有。本页为非商业逆向与可移植性演示，不隶属
 于 Capcom。
