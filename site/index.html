@@ -263,14 +263,14 @@
       </div>
     </div>
     <button id="fullscreen" type="button" aria-label="进入全屏" title="进入全屏" hidden>⛶</button>
-    <div id="png-debug-legend" hidden>原色＝单图可覆盖　紫色＝需动态拼图</div>
+    <div id="png-debug-legend" hidden>原色＝区域 PNG 可覆盖　紫色＝动态覆盖层</div>
     <div id="status" role="alert"></div>
     <div id="stats"></div>
     <div id="safe-probe" aria-hidden="true"></div>
   </div>
-  <script src="mobile-game-shell.js?v=20260828-all-scenes-single-image-1"></script>
+  <script src="mobile-game-shell.js?v=20260828-stage-area-unique-1"></script>
   <script>
-    const DINO_ASSET_VERSION = '20260828-all-scenes-single-image-1';
+    const DINO_ASSET_VERSION = '20260828-stage-area-unique-1';
     document.getElementById('png-debug-legend').hidden =
       new URLSearchParams(location.search).get('png-debug') !== '1';
     const ui = Object.fromEntries([
@@ -322,10 +322,16 @@
         document.body.dataset.qsoundWrites = s.audioWrites;
         const legend = document.getElementById('png-debug-legend');
         if (!legend.hidden) {
-          const ratio = s.singleImageTotalPixels > 0
-            ? 100 * s.singleImageLivePixels / s.singleImageTotalPixels
+          const ratio = s.singleImageObservedTiles > 0
+            ? 100 * s.singleImageDynamicTiles / s.singleImageObservedTiles
             : 0;
-          legend.textContent = `原色＝单图可覆盖　紫色＝需动态拼图 ${ratio.toFixed(1)}%　基准 ${s.singleImageProbes}`;
+          const scene = s.singleImageStage > 0
+            ? `　第${s.singleImageStage}关/区域${s.singleImageArea}/图${s.singleImageSegment}`
+            : '　等待进入关卡';
+          const effects = s.singleImageStage > 0
+            ? `　调色板${s.singleImagePaletteVariants}${s.singleImageRowScroll ? '＋行滚动' : ''}`
+            : '';
+          legend.textContent = `原色＝区域 PNG 可覆盖　紫色＝动态覆盖层 ${ratio.toFixed(1)}%　唯一图块 ${s.singleImageDynamicTiles}/${s.singleImageObservedTiles}　单图片段 ${s.singleImageProbes}${scene}${effects}`;
         }
       }
     };
@@ -447,6 +453,6 @@
       syncPause();
     });
   </script>
-  <script src="dino.js?v=20260828-all-scenes-single-image-1"></script>
+  <script src="dino.js?v=20260828-stage-area-unique-1"></script>
 </body>
 </html>
