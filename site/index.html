@@ -200,6 +200,15 @@
       font: 700 24px/1 sans-serif; cursor: pointer; touch-action: manipulation;
     }
     #fullscreen[hidden] { display: none; }
+    #png-debug-legend {
+      position: absolute; z-index: 16;
+      left: max(12px, var(--safe-left)); top: max(12px, var(--safe-top));
+      padding: 7px 10px; border: 1px solid #ff4dff;
+      border-radius: 5px; background: #130016d9; color: #fff;
+      font: 700 12px/1.25 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      pointer-events: none;
+    }
+    #png-debug-legend[hidden] { display: none; }
     #status {
       position: absolute; left: 50%; top: 50%; z-index: 24; display: none;
       max-width: min(90vw, 640px); transform: translate(-50%, -50%);
@@ -254,13 +263,16 @@
       </div>
     </div>
     <button id="fullscreen" type="button" aria-label="进入全屏" title="进入全屏" hidden>⛶</button>
+    <div id="png-debug-legend" hidden>原色背景＝PNG　紫色背景＝原拼图</div>
     <div id="status" role="alert"></div>
     <div id="stats"></div>
     <div id="safe-probe" aria-hidden="true"></div>
   </div>
-  <script src="mobile-game-shell.js?v=20260828-stage01-png-debug-1"></script>
+  <script src="mobile-game-shell.js?v=20260828-stage01-png-debug-2"></script>
   <script>
-    const DINO_ASSET_VERSION = '20260828-stage01-png-debug-1';
+    const DINO_ASSET_VERSION = '20260828-stage01-png-debug-2';
+    document.getElementById('png-debug-legend').hidden =
+      new URLSearchParams(location.search).get('png-debug') !== '1';
     const ui = Object.fromEntries([
       'app','canvas','stage-frame','controls-layer','stick-zone','stick-knob',
       'safe-probe','launch','start','fullscreen','status','stats','pause-overlay'
@@ -428,6 +440,6 @@
       syncPause();
     });
   </script>
-  <script src="dino.js?v=20260828-stage01-png-debug-1"></script>
+  <script src="dino.js?v=20260828-stage01-png-debug-2"></script>
 </body>
 </html>
