@@ -263,14 +263,14 @@
       </div>
     </div>
     <button id="fullscreen" type="button" aria-label="进入全屏" title="进入全屏" hidden>⛶</button>
-    <div id="png-debug-legend" hidden>原色＝实际 PNG　紫色＝非 PNG 渲染</div>
+    <div id="png-debug-legend" hidden>原色＝PNG　紫色＝非 PNG 渲染</div>
     <div id="status" role="alert"></div>
     <div id="stats"></div>
     <div id="safe-probe" aria-hidden="true"></div>
   </div>
-  <script src="mobile-game-shell.js?v=20260829-png-source-1"></script>
+  <script src="mobile-game-shell.js?v=20260829-png-all-1"></script>
   <script>
-    const DINO_ASSET_VERSION = '20260829-png-source-1';
+    const DINO_ASSET_VERSION = '20260829-png-all-1';
     document.getElementById('png-debug-legend').hidden =
       new URLSearchParams(location.search).get('png-debug') !== '1';
     const ui = Object.fromEntries([
@@ -332,7 +332,10 @@
           const effects = s.singleImageStage > 0
             ? `　调色板${s.singleImagePaletteVariants}${s.singleImageRowScroll ? '＋行滚动' : ''}`
             : '';
-          legend.textContent = `原色＝实际 PNG　紫色＝非 PNG 渲染 ${ratio.toFixed(1)}%　非PNG像素 ${s.pngDebugGeneratedPixels}/${renderedPixels}　背景动态图块 ${s.singleImageDynamicTiles}/${s.singleImageObservedTiles}　单图片段 ${s.singleImageProbes}${scene}${effects}`;
+          const completeFrames = Module.ccall('dino_get_png_sprite_groups', 'number');
+          const tileFallbacks = Module.ccall(
+            'dino_get_png_tile_fallback_sprite_groups', 'number');
+          legend.textContent = `原色＝PNG　紫色＝非 PNG 渲染 ${ratio.toFixed(1)}%　非PNG像素 ${s.pngDebugGeneratedPixels}/${renderedPixels}　完整帧 ${completeFrames}　PNG图块回退 ${tileFallbacks}　背景动态图块 ${s.singleImageDynamicTiles}/${s.singleImageObservedTiles}　单图片段 ${s.singleImageProbes}${scene}${effects}`;
         }
       }
     };
@@ -454,6 +457,6 @@
       syncPause();
     });
   </script>
-  <script src="dino.js?v=20260829-png-source-1"></script>
+  <script src="dino.js?v=20260829-png-all-1"></script>
 </body>
 </html>
