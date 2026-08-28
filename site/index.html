@@ -263,14 +263,14 @@
       </div>
     </div>
     <button id="fullscreen" type="button" aria-label="进入全屏" title="进入全屏" hidden>⛶</button>
-    <div id="png-debug-legend" hidden>原色＝区域 PNG 可覆盖　紫色＝动态覆盖层</div>
+    <div id="png-debug-legend" hidden>原色＝实际 PNG　紫色＝非 PNG 渲染</div>
     <div id="status" role="alert"></div>
     <div id="stats"></div>
     <div id="safe-probe" aria-hidden="true"></div>
   </div>
-  <script src="mobile-game-shell.js?v=20260828-complete-sprites-1"></script>
+  <script src="mobile-game-shell.js?v=20260829-png-source-1"></script>
   <script>
-    const DINO_ASSET_VERSION = '20260828-complete-sprites-1';
+    const DINO_ASSET_VERSION = '20260829-png-source-1';
     document.getElementById('png-debug-legend').hidden =
       new URLSearchParams(location.search).get('png-debug') !== '1';
     const ui = Object.fromEntries([
@@ -322,8 +322,9 @@
         document.body.dataset.qsoundWrites = s.audioWrites;
         const legend = document.getElementById('png-debug-legend');
         if (!legend.hidden) {
-          const ratio = s.singleImageObservedTiles > 0
-            ? 100 * s.singleImageDynamicTiles / s.singleImageObservedTiles
+          const renderedPixels = s.pngDebugAuthoredPixels + s.pngDebugGeneratedPixels;
+          const ratio = renderedPixels > 0
+            ? 100 * s.pngDebugGeneratedPixels / renderedPixels
             : 0;
           const scene = s.singleImageStage > 0
             ? `　第${s.singleImageStage}关/区域${s.singleImageArea}/图${s.singleImageSegment}`
@@ -331,7 +332,7 @@
           const effects = s.singleImageStage > 0
             ? `　调色板${s.singleImagePaletteVariants}${s.singleImageRowScroll ? '＋行滚动' : ''}`
             : '';
-          legend.textContent = `原色＝区域 PNG 可覆盖　紫色＝动态覆盖层 ${ratio.toFixed(1)}%　唯一图块 ${s.singleImageDynamicTiles}/${s.singleImageObservedTiles}　单图片段 ${s.singleImageProbes}${scene}${effects}`;
+          legend.textContent = `原色＝实际 PNG　紫色＝非 PNG 渲染 ${ratio.toFixed(1)}%　非PNG像素 ${s.pngDebugGeneratedPixels}/${renderedPixels}　背景动态图块 ${s.singleImageDynamicTiles}/${s.singleImageObservedTiles}　单图片段 ${s.singleImageProbes}${scene}${effects}`;
         }
       }
     };
@@ -453,6 +454,6 @@
       syncPause();
     });
   </script>
-  <script src="dino.js?v=20260828-complete-sprites-1"></script>
+  <script src="dino.js?v=20260829-png-source-1"></script>
 </body>
 </html>
